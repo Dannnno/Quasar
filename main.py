@@ -1,5 +1,3 @@
 """
-This package does all the heavy lifting of the program
+The entry point of the application
 """
-
-from WebBrowser.Testing import *
