@@ -17,21 +17,21 @@ In short, this rather ambitiously named project will eventually seek to have som
 other webbrowsers (on a much smaller scale in all likelihood)
 
 
-Approximate timeline/order of events
-1. Getting a working implementation of a CSS Parser.  This will probably be a gradual process, lots of coming back and 
+###Approximate timeline/order of events:
+  1. Getting a working implementation of a CSS Parser.  This will probably be a gradual process, lots of coming back and 
 covering edge cases and such.
-2. Getting a working implementation of an HTML Parser.  Again, gradual.  Going to take a lot of work... <understatement
+  2. Getting a working implementation of an HTML Parser.  Again, gradual.  Going to take a lot of work... <understatement
 of the year>
-3. HTML rendering.  I frankly have no idea how I'm even going to approach this
-4. CSS rendering.  See above
-5. Working implementation of a JavaScript Parser.  See <1>, <2>
-6. JavaScript interpreter.  See <3>
-7. JavaScript rendering (ie rendering things based on JavaScript)
-8. Actual browser implementation.  Don't really know what this will entail, but I imagine a lot of stuff with HTTP 
+  3. HTML rendering.  I frankly have no idea how I'm even going to approach this
+  4. CSS rendering.  See above
+  5. Working implementation of a JavaScript Parser.  See <1>, <2>
+  6. JavaScript interpreter.  See <3>
+  7. JavaScript rendering (ie rendering things based on JavaScript)
+  8. Actual browser implementation.  Don't really know what this will entail, but I imagine a lot of stuff with HTTP 
 requests
-9. Use my new browser semi-exclusively.  Fix edge cases as they come up.
-10. ???
-11. Profit!
+  9. Use my new browser semi-exclusively.  Fix edge cases as they come up.
+  10. ???
+  11. Profit!
 
 
 ...
