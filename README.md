@@ -38,3 +38,15 @@ requests
 
 At least where I'm standing, that is an entire list of non-trivial problems.  This isn't ambitious; its insane as
 a one man project.  It'll be fun though. Learn a lot.
+
+
+### Testing
+
+This will have to be a well tested job to even come close to functioning.  I plan on testing somewhat rigorously from the
+get-go and then updating for edge cases as often as necessary.
+
+All tests can be run using nose from the commandline
+
+    \Path\To\Directory\WebBrowser\> nosetests
+    
+    
