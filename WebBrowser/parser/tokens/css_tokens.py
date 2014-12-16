@@ -44,48 +44,56 @@ replace_characters[u'u\0000'] = replacement_character
 
 
 CSS_tokens = {"<ident-token>": re.compile("""
-                                      (--|-)?   # an ident can start with an optional -/--
-                                      (([^\x00-\x7F]   # This matches non ascii characters
-                                        |
-                                        [a-zA-Z_])+   # Otherwise we match non-numeric characters
+                                      (?:--|-|\A) # an ident can start with an optional -/--
+                                      ([^\x00-\x7F]   # This matches non ascii characters
                                        |
-                                       ((\\([^\r\n\fa-zA-Z0-9]+)|([a-zA-Z0-9]{1,6})(\s*)?))   # Escape token below
-                                      \Z
+                                       [a-zA-Z_]|-   # Otherwise we match letters mostly
+                                       |
+                                       (\\\\[^a-fA-F0-9\r\n\f]\Z|\\\\[a-fA-F0-9](?:\Z|\s))   # Escape token below
+                                      )+
                                           """, re.VERBOSE),
               "<function-token>":
                  # This is just the ident-token plus an open paren
-                 re.compile("(--|-)?(([^\x00-\x7F]|[a-zA-Z_])+|((\\([^\r\n\fa-zA-Z0-9]+)|([a-zA-Z0-9]{1,6})(\s*)?))\("),
+                 re.compile("-{,2}([^\x00-\x7F]|[a-zA-Z_\\\\-]|(\\[^a-fA-F0-9\r\n\f]\Z|\\[a-fA-F0-9](?:\Z|\s)))+\("),
               "<at-keyword-token>":
                  # This is just an @ sign plus the ident-token
-                 re.compile("@(--|-)?(([^\x00-\x7F]|[a-zA-Z_])+|((\\([^\r\n\fa-zA-Z0-9]+)|([a-zA-Z0-9]{1,6})(\s*)?))"),
+                 re.compile("@-{,2}([^\x00-\x7F]|[a-zA-Z_\\\\-]|(\\[^a-fA-F0-9\r\n\f]\Z|\\[a-fA-F0-9](?:\Z|\s)))+"),
               "<hash-token>": # This is just a # sign plus a word or escape sequence
                               re.compile("""
                                      [#]   # Matching the hash sign
-                                     (([^\x00-\x7F]   # This matches non ascii characters
-                                        |
-                                        \w)+   # Otherwise we match a word-character
+                                     ([^\x00-\x7F]   # This matches non ascii characters
                                       |
-                                      ((\([^\r\n\fa-zA-Z0-9]+)|([a-zA-Z0-9]{1,6})(\s*)?))   # Escape token below
+                                      [a-zA-Z0-9]|-   # Otherwise we match a word-character
+                                      |
+                                      (\\\\([^a-fA-F0-9\r\n\f]\Z)|([a-fA-F0-9](?:\Z|\s))))+   # Escape token below
                                          """, re.VERBOSE),
               "<string-token>": re.compile("""
-                                      (")?   # which we start with
-                                      ([^(?(1)"|')\\\n\r\f]   # strings, but not multiline
+                                      (?P<quote> "|')   # which we start with
+                                      ([^(?P=<quote>)\\\n\r\f]   # strings, but not multiline
                                        |
-                                       ((\([^\r\n\fa-zA-Z0-9]+)|([a-zA-Z0-9]{1,6})(\s*)?)   # Escape token below
+                                       \\\\([^a-fA-F0-9\r\n\f]\Z)|([a-fA-F0-9](?:\Z|\s))   # Escape token below
                                        |
-                                       (\\[\n\r\f]|\n\r|\r\n)   # Collecting escaped newlines
-                                      )
-                                      (?(1)"|')   # which we started with
+                                       \\\\[\n\r\f]|\\\\\r\n   # Collecting escaped newlines
+                                      )+
+                                      #[(?P=<quote>)]\Z  # which we started with
                                            """, re.VERBOSE),
+
+                                   #   ([^(?P=<quote>)\\\n\r\f]   # strings, but not multiline
+                                   #    |
+                                   #    \\\\([^a-fA-F0-9\r\n\f]\Z)|([a-fA-F0-9](?:\Z|\s))   # Escape token below
+                                   #    |
+                                   #    \\\\[\n\r\f]|\\\\\r\n   # Collecting escaped newlines
+                                   #   )*
+                                   #   [(?P=<quote>)]   # which we started with
               "<bad-string-token>": None,
               "<url-token>": re.compile("""
                                        url   # starts with url
                                        \(   # lparen
-                                       (?:\s*)?   # optional whitespace
-                                       ([^"'\(\)\\\s]   #not quotes,
-                                        |
-                                        ((\([^\r\n\fa-zA-Z0-9]+)|([a-zA-Z0-9]{1,6})(\s*)?))   # Escape token below
-                                       (?:\s*)?   # optional whitespace
+                                        \s*   # optional whitespace
+                                        ([^"'\(\)\\\s]   #not quotes,
+                                         |
+                                         (\\([^a-fA-F0-9\r\n\f]\Z)|([a-fA-F0-9](?:\Z|\s)))  # Escape token below
+                                        \s*   # optional whitespace
                                        \)   # endparen
                                         """, re.VERBOSE),
               "<bad-url-token>": None,
@@ -99,7 +107,7 @@ CSS_tokens = {"<ident-token>": re.compile("""
               "<suffix-match-token>": None,
               "<substring-match-token>": None,
               "<column-token>": None,
-              "<whitespace-token>": re.compile('\s*'),
+              "<whitespace-token>": re.compile('\s+'),
               "<CDO-token>": None,
               "<CDC-token>": None,
               "<colon-token>": re.compile(r':'),
@@ -111,26 +119,30 @@ CSS_tokens = {"<ident-token>": re.compile("""
               "<)-token>": re.compile(r'\)'),
               "<{-token>": re.compile(r'{'),
               "<}-token>.": re.compile(r'}'),
-              ## Below this are not real, official tokens
+              # Below this are not real, official tokens from the site.
+              # Just practice spaces for portions of the other regexes
               "<comment-token>": re.compile(r"""
                                         /   # match the leading slash
-                                        (\*)   # match the opening star
-                                        ([^*]*)?   # match anything but a star, optionally
-                                        (\*)   # match the ending star
+                                        \*   # match the opening star
+                                        ([^*])*   # match anything but a star, optionally
+                                        \*   # match the ending star
                                         /   # match the ending slash
                                              """, re.VERBOSE),
-              "<hex-digit-token>": re.compile("[a-zA-Z0-9]"),
+              "<hex-digit-token>": re.compile("[a-fA-F0-9]\Z"),
               "<escape-token>": re.compile("""
-                                       \\   # always starts with a backslash
-                                       ([^\r\n\fa-zA-Z0-9]+)   # I think this is escaped whitespace/symbols
-                                       |
-                                       ([a-zA-Z0-9]{1,6})(\s*)?   # 1-6 hex digits followed by optional whitespace
-                                           """, re.VERBOSE)
+                                       \\\\   # always starts with a backslash
+                                       ([^a-fA-F0-9\r\n\f]\Z   # escaping symbols and spaces
+                                        |
+                                        [a-fA-F0-9](?:\Z|\s+))   # 1-6 hex digits followed by optional whitespace
+                                           """, re.VERBOSE),
+              "<newline-token>": re.compile("""
+                                            [\n\r\f]{1}(\n|\Z)
+                                            """, re.VERBOSE)
 }
 
 
-def preprocessing(unicode_string):
-    unicode_string = unicode_string.decode('UTF-8')
+def preprocessing(unicode_string, encoding='UTF_8'):
+    unicode_string = unicode_string.decode(encoding)
     for replaced, replacer in replace_characters.iteritems():
         unicode_string = unicode_string.replace(replaced, replacer)
     return unicode_string

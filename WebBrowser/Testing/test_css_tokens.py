@@ -34,12 +34,7 @@ class test_comment_token(object):
 
 
 class test_newline_token(object):
-    # regex = CSS_tokens['<newline-token>']
-
-    @classmethod
-    def setup_class(cls):
-        # Haven't written it yet
-        raise SkipTest
+    regex = CSS_tokens['<newline-token>']
 
     def test_good_newline1(self):
         input = preprocessing("""\n""")
@@ -127,39 +122,40 @@ class test_hex_digit_token(object):
 
 
 class test_escape_token(object):
-    regex = CSS_tokens["<hex-digit-token>"]
+    regex = CSS_tokens["<escape-token>"]
 
     def test_good_escape1(self):
-        input = preprocessing("""\z""")
+        input = preprocessing(r"""\z""")
         assert self.regex.match(input)
 
     def test_good_escape2(self):
-        input = preprocessing("""7""")
+        input = preprocessing(r"""\7 """)
         assert self.regex.match(input)
 
     def test_good_escape3(self):
-        input = preprocessing("""A  """)
-        assert self.regex.match(input)
-
-    def test_good_escape4(self):
-        input = preprocessing("""9""")
+        input = preprocessing(r"""\!""")
         assert self.regex.match(input)
 
     def test_bad_escape1(self):
-        input = preprocessing("""\1""")
+        input = preprocessing(r"""\!a""")
         assert self.regex.match(input) is None
 
     def test_bad_escape2(self):
-        input = preprocessing("""\n""")
+        input = preprocessing("""\na""")
         assert self.regex.match(input) is None
 
     def test_bad_escape3(self):
-        input = preprocessing("""\d""")
+        input = preprocessing(r"""\aa""")
         assert self.regex.match(input) is None
 
 
 class test_ident_token(object):
-    regex = CSS_tokens["<hex-digit-token>"]
+    regex = CSS_tokens["<ident-token>"]
+
+    @classmethod
+    def setup_class(cls):
+        # Haven't written it yet
+        raise SkipTest
 
     def test_good_ident1(self):
         input = preprocessing("""--""")
@@ -203,6 +199,8 @@ class test_ident_token(object):
 
     def test_bad_ident1(self):
         input = preprocessing("""--!""")
+        a = self.regex.match(input)
+        print a.groups()
         assert self.regex.match(input) is None
 
     def test_bad_ident2(self):
@@ -211,6 +209,8 @@ class test_ident_token(object):
 
     def test_bad_ident3(self):
         input = preprocessing("""-!""")
+        a = self.regex.match(input)
+        print a.groups()
         assert self.regex.match(input) is None
 
 
@@ -266,7 +266,7 @@ class test_function_token(object):
         assert self.regex.match(input) is None
 
     def test_bad_function3(self):
-        input = preprocessing("""a""")
+        input = preprocessing("""-a""")
         assert self.regex.match(input) is None
 
 
@@ -399,39 +399,44 @@ class test_string_token(object):
 
     def test_bad_string1(self):
         input = preprocessing('''"asdf\'''')
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_string2(self):
         input = preprocessing("""'asdf\"""")
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_string3(self):
         input = preprocessing("""'as'df'""")
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_string4(self):
         input = preprocessing('''"as"df"''')
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
+
+    def test_bad_string5(self):
+        input = preprocessing("""'as\df'""")
+        assert self.regex.match(input) is None
+
+    def test_bad_string6(self):
+        input = preprocessing('''"as\df"''')
+        assert self.regex.match(input) is None
 
     def test_bad_string7(self):
-        input = preprocessing("""'as\df'""")
-        assert self.regex.match(input)
+        input = preprocessing("""'as\ndf'""")
+        assert self.regex.match(input) is None
 
     def test_bad_string8(self):
-        input = preprocessing('''"as\df"''')
-        assert self.regex.match(input)
-
-    def test_bad_string9(self):
-        input = preprocessing("""'as\ndf'""")
-        assert self.regex.match(input)
-
-    def test_bad_string10(self):
         input = preprocessing('''"as\ndf"''')
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
 
 class test_url_token(object):
     regex = CSS_tokens["<url-token>"]
+
+    @classmethod
+    def setup_class(cls):
+        # Haven't written it yet
+        raise SkipTest
 
     def test_good_url1(self):
         input = preprocessing('''url()''')
@@ -471,37 +476,37 @@ class test_url_token(object):
 
     def test_bad_url1(self):
         input = preprocessing('''url(\)''')
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_url2(self):
         input = preprocessing("""url( \  \t)""")
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_url3(self):
         input = preprocessing("""url(\/n)""")
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_url4(self):
         input = preprocessing('''"url(\asdkgjhdf/   )"''')
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_url5(self):
         input = preprocessing("""url(   \asdkgjhdf/   )""")
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_url6(self):
         input = preprocessing('''url(  \asdkgjhdf/)''')
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_url7(self):
         input = preprocessing("""url(\asdkg\zjhdf/   )""")
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_url8(self):
         input = preprocessing('''url(    \asdkg\zjhdf/   )''')
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
     def test_bad_url9(self):
         input = preprocessing("""    url(\asdkg\zjhdf)""")
-        assert self.regex.match(input)
+        assert self.regex.match(input) is None
 
