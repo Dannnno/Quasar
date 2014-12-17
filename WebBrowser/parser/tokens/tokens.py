@@ -1,15 +1,14 @@
 import abc
 
 
-class Token(str):
-    __metaclass__ = abc.ABCMeta
-    _key = ''
+class Token(abc.ABCMeta):
+    _regex = ''
     _value = ''
 
     @abc.abstractproperty
-    def key(self):
-        return self._key
+    def regex(self):
+        raise NotImplementedError
 
     @abc.abstractproperty
     def value(self):
-        return self._value
+        raise NotImplementedError
