@@ -35,8 +35,14 @@ from WebBrowser.parser.tokens.tokens import Token
 from collections import OrderedDict
 from collections import deque
 import abc
+import logging
+import os
 import re
 
+
+logging.basicConfig(filename=os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                          "css_token.log"),
+                    level=logging.INFO)
 
 replace_characters = OrderedDict()
 line_feed = u'u\000F' # Line Feed
@@ -46,7 +52,6 @@ replace_characters[u'u\000D'] = line_feed   # Carriage Return (CR)
 replace_characters[u'u\000C'] = line_feed   # Form Feed (FF)
 replace_characters[u'u\0000'] = replacement_character
 
-
 CSS_token_literals = {re.compile(r';'): 'COLON',
                       re.compile(r','): 'COMMA',
                       re.compile(r'\['): 'LBRACK',
@@ -55,6 +60,7 @@ CSS_token_literals = {re.compile(r';'): 'COLON',
                       re.compile(r'\)'):'RPAREN',
                       re.compile(r'{'): 'LCURLY',
                       re.compile(r'}'): 'RCURLY'}
+
 CSS_tokens = {"<ident-token>": re.compile("""
                                       (?:--|-|\A) # an ident can start with an optional -/--
                                       ([^\x00-\x7F]   # This matches non ascii characters
@@ -144,7 +150,6 @@ def preprocessing(unicode_string, encoding='UTF_8'):
 
 class CSSTokenizer(object):
     _stream = deque()
-    instructions = {''}
 
     def __init__(self, string=''):
         self.tokens = deque()
@@ -166,10 +171,10 @@ class CSSTokenizer(object):
                 if WhitespaceToken.regex.match(current):
                     current = ' '
                 action = CSSTokenizer.instructions[current]
-            except KeyError:
-                value, match_object, start_index, end_index = (None for _ in xrange(4))
+            except KeyError as e:
+                logging.warn("Unknown character `{}`.  Skipping".format(current))
             else:
-                value, match_object, start_index, end_index = action()
+                self.tokens.append(action(current, self.stream))
 
     def consume_token(self, number=1):
         consumed = ''
@@ -196,10 +201,8 @@ class CSSToken(object):
     _value = ''
     _match = None
 
-    def __init__(self, token_stream=None, index=0):
+    def __init__(self, token_stream=None):
         self.stream = token_stream
-        self.start_index = index
-        self.end_index = None
 
     @property
     def regex(self):
@@ -218,7 +221,7 @@ class CSSToken(object):
         self._match = match_object
 
     def tokenize(self):
-        self.match = self.regex.match(self.stream[self.start_index:])
+        self.match = self.regex.match(self.stream)
         self.value = self.match
 
 
@@ -231,9 +234,23 @@ class CSSToken(object):
 # class AtKeywordToken(CSSToken): pass
 #
 #
-# class HashToken(CSSToken): pass
-#
-#
+class HashToken(CSSToken):
+    _type = "unrestricted"
+    _possible_types = ['id', 'unrestricted']
+
+    def __init__(self, stream=None):
+        super(HashToken, self).__init__(stream)
+
+    @property
+    def type(self):
+        return self._type
+
+    @type.setter
+    def type(self, type_):
+        if type_ not in HashToken._possible_types:
+            raise ValueError("Type must be either 'id' or 'unrestricted', not {}".format(type_))
+
+
 # class StringToken(CSSToken): pass
 #
 #
@@ -268,14 +285,14 @@ class CSSToken(object):
 #
 #
 # class ColumnToken(CSSToken): pass
-
-
+#
+#
 class WhitespaceToken(CSSToken):
     _regex = re.compile(r'(\s+)')
     _value = ' '
 
-    def __init__(self, string='', index=0):
-        super(WhitespaceToken, self).__init__(string, index)
+    def __init__(self, string=''):
+        super(WhitespaceToken, self).__init__(string)
 
     @property
     def value(self):
@@ -285,11 +302,8 @@ class WhitespaceToken(CSSToken):
     def value(self, regex_match):
         if regex_match:
             self._value = ' '
-            self.end_index = regex_match.end()
         else:
             self._value = None
-            self.end_index = None
-            self.start_index = None
 
 
 # class CDOToken(CSSToken): pass
