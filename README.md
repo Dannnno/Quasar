@@ -1,3 +1,5 @@
+[![Docs built](https://readthedocs.org/projects/webbrowser/badge/?version=latest)](http://webbrowser.readthedocs.org/en/latest/)
+[![Build passed](https://travis-ci.org/Dannnno/WebBrowser.svg?branch=master)](https://travis-ci.org/Dannnno/WebBrowser)
 ## Dannnno's WebBrowser
 
 This is a very long term project I'm going to play around with.  In general I'm interested in how to most effectively
@@ -24,8 +26,8 @@ covering edge cases and such.
 of the year>
   3. HTML rendering.  I frankly have no idea how I'm even going to approach this
   4. CSS rendering.  See above
-  5. Working implementation of a JavaScript Parser.  See <1>, <2>
-  6. JavaScript interpreter.  See <3>
+  5. Working implementation of a JavaScript Parser.  See `<1>`, `<2>`
+  6. JavaScript interpreter.  See `<3>`
   7. JavaScript rendering (ie rendering things based on JavaScript)
   8. Actual browser implementation.  Don't really know what this will entail, but I imagine a lot of stuff with HTTP 
 requests

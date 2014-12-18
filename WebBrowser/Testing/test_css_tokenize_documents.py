@@ -1,5 +1,7 @@
 import os
 
+from WebBrowser.parser.tokens.css_tokens import preprocessing, CSSTokenizer
+
 
 test_page_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_pages')
 
