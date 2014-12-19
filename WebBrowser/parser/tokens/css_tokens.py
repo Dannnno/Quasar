@@ -354,6 +354,7 @@ class URLToken(CSSToken):
 
 # Todo: implement
 class DelimToken(CSSToken):
+    # I forsee metaclass wizardry involving this
     _regex = None
     _value = ''
     _match = None
@@ -802,10 +803,111 @@ class NewlineToken(CSSToken):
         raise NotImplementedError
 
 
+# Todo: implement
+class NumericToken(CSSToken):
+    _regex = None
+    _value = ''
+    _match = None
+
+    def __init__(self, first='', stream=deque()):
+        super(NumericToken, self).__init__(first, stream)
+
+    @property
+    def value(self):
+        raise NotImplementedError
+
+    @value.setter
+    def value(self, regex_match):
+        raise NotImplementedError
+
+    @property
+    def match(self):
+        raise NotImplementedError
+
+    @match.setter
+    def match(self, stream):
+        raise NotImplementedError
+
+
+# Todo: implement
+class EOFToken(CSSToken):
+    _regex = None
+    _value = ''
+    _match = None
+
+    def __init__(self, first='', stream=deque()):
+        super(EOFToken, self).__init__(first, stream)
+
+    @property
+    def value(self):
+        raise NotImplementedError
+
+    @value.setter
+    def value(self, regex_match):
+        raise NotImplementedError
+
+    @property
+    def match(self):
+        raise NotImplementedError
+
+    @match.setter
+    def match(self, stream):
+        raise NotImplementedError
+
+
 class CSSTokenizer(object):
+    whitespace = re.compile('\s')
+    letters = re.compile('[a-zA-Z_]')
+    numbers = re.compile('\d')
+    EOF = re.compile('\Z')
     _stream = deque()
-    instructions = {' ': WhitespaceToken, "'": StringToken, '"': StringToken,
-                    u'\u0022': StringToken, u'\u0023': StringToken}
+    # In all cases a DelimToken has more than one possible option.  I'm not positive how I'm going to handle this.  I
+    # can sort of imagine some metaclass wizardry, or make DelimToken a function instead of a class and then have it
+    # return a DToken object (or something) if all else fails.  That sort of sounds like metaclass wizardry though
+    instructions = {'(': LiteralToken, ')': LiteralToken, ',': LiteralToken, ':': LiteralToken, ';': LiteralToken,
+                    '[': LiteralToken, ']': LiteralToken, '{': LiteralToken, '}': LiteralToken,
+                    ' ': WhitespaceToken,   # All whitespace is generalized into a single space (in tokenize_stream)
+                    "'": StringToken, '"': StringToken,
+                    '#': DelimToken,   # If the next input code point is a name code point or the next two input code
+                                       # points are a valid escape, then:
+                                       #      1. Create a <hash-token>.
+                                       #      2. If the next 3 input code points would start an identifier, set the
+                                       #      <hash-token>’s type flag to "id".
+                                       #      3. Consume a name, and set the <hash-token>’s value to the returned string.
+                                       #      4. Return the <hash-token>.
+                    '$': DelimToken,   # If the next token is U+003D EQUALS SIGN (=) then its a suffix match token
+                    '*': DelimToken,   # If the next token is U+003D EQUALS SIGN (=) then its a substring match token
+                    '+': DelimToken,   # If the stream started with a number, reconsume the current input code point,
+                                       # consume a numeric token and return it.
+                    '-': DelimToken,   # If the stream started with a number, reconsume the current input code point,
+                                       # consume a numeric token, and return it.
+                                       # If the next 2 input code points are:
+                                       #  U+002D HYPHEN-MINUS U+003E GREATER-THAN SIGN (->),
+                                       # consume them and return a <CDC-token>.
+                                       # If the input stream starts with an identifier, reconsume the current input
+                                       # code point, consume an ident-like token, and return it.
+                    '.': DelimToken,   # If the input stream starts with a number, reconsume the current input code
+                                       # point, consume a numeric token, and return it.
+                    '<': DelimToken,   # If the next 3 input code points are U+0021 EXCLAMATION MARK U+002D HYPHEN-MINUS
+                                       # U+002D HYPHEN-MINUS (!--), consume them and return a <CDO-token>.
+                    '@': DelimToken,   # If the next 3 input code points would start an identifier, consume a name,
+                                       # create an <at-keyword-token> with its value set to the returned value,
+                                       # and return it.
+                    '\\': DelimToken,  # If the input stream starts with a valid escape, reconsume the current input
+                                       # code point, consume an ident-like token, and return it.  Otherwise, this is a
+                                       # parse error. Return a <delim-token> with its value set to the current input
+                                       # code point.
+                    '^': DelimToken,   # If the next input code point is U+003D EQUALS SIGN (=), consume it and return
+                                       # a <prefix-match-token>.
+                    '0': NumericToken,   # This is handled below, all numbers are this entry
+                    'a': IdentToken,   # This is handled below, all letters and the `_` are this entry
+                    '|': DelimToken,   # If the next input code point is U+003D EQUALS SIGN (=), consume it and return a
+                                       # <dash-match-token>.
+                                       # Otherwise, if the next input code point is U+0073 VERTICAL LINE (|), consume it
+                                       # and return a <column-token>.
+                    '~': DelimToken   # If the next input code point is U+003D EQUALS SIGN (=), consume it and return
+                                       # an <include-match-token>.
+                    }
 
     def __init__(self, iterable=()):
         self.tokens = deque()
@@ -824,12 +926,16 @@ class CSSTokenizer(object):
         while self.stream:
             current = self.consume_raw_stream(1)
             try:
-                if current in CSS_token_literals:
-                    self.tokens.append(LiteralToken(CSS_token_literals[current]))
-                    continue
-                if WhitespaceToken._regex.match(current):
-                    current = ' '
-                token_type = CSSTokenizer.instructions[current]
+                if CSSTokenizer.whitespace.match(current):
+                    token_type = CSSTokenizer.instructions[' ']
+                elif CSSTokenizer.numbers.match(current):
+                    token_type = CSSTokenizer.instructions['0']
+                elif CSSTokenizer.letters.match(current):
+                    token_type = CSSTokenizer.instructions['a']
+                elif CSSTokenizer.EOF.match(current):
+                    token_type = EOFToken()
+                else:
+                    token_type = DelimToken(current)
             except KeyError as e:
                 logging.warn("Unknown character `{}`.  Skipping".format(current))
             else:
