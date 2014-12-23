@@ -40,10 +40,10 @@ import re
 from WebBrowser.parser.tokens.tokens import Token
 
 
-logging.basicConfig(filename=os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                          "css_token.log"),
-                    level=logging.INFO)
-
+logging.basicConfig(
+    filename=os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "css_token.log"),
+    level=logging.INFO)
 
 replace_characters = OrderedDict()
 line_feed = u'u\000F'   # Line Feed
@@ -124,7 +124,7 @@ CSS_tokens = {"<ident-token>": re.compile("""
               "<newline-token>": re.compile("""
                                             [\n\r\f]{1}(\n|\Z)
                                             """, re.VERBOSE)
-}
+              }
 
 
 def preprocessing(unicode_string, encoding='UTF_8'):
@@ -133,52 +133,33 @@ def preprocessing(unicode_string, encoding='UTF_8'):
         unicode_string = unicode_string.replace(replaced, replacer)
     return unicode_string
 
-## Token meta classes
-# class DelimTokenMeta(Token):
-#
-#     def __init__(self, clsname, base, dct, current_char, stream):
-#         pass
-#
-#     def __new__(cls, clsname, base, dct, current_char, stream):
-#         return super(DelimTokenMeta, cls).__new__(cls, clsname, base, dct)
-#
-#
-# class IdentLikeToken(Token):
-#
-#     def __init__(self, clsname, base, dct, current_char, stream):
-#         pass
-#
-#     def __new__(cls, clsname, base, dct, current_char, stream):
-#         return super(IdentLikeToken, cls).__new__(cls, clsname, base, dct)
-#
-#
-# class NumericToken(Token):
-#
-#     def __init__(self, clsname, base, dct, current_char, stream):
-#         pass
-#
-#     def __new__(cls, clsname, base, dct, current_char, stream):
-#         return super(NumericToken, cls).__new__(cls, clsname, base, dct)
-#
-#
-# class StringToken(Token):
-#
-#     def __init__(self, clsname, base, dct, current_char, stream):
-#         pass
-#
-#     def __new__(cls, clsname, base, dct, current_char, stream):
-#         print cls, clsname, base, dct, current_char, stream
-#         return super(StringToken, cls).__new__(cls, clsname, base, dct)
-#
-#
-# class URLToken(Token):
-#     # __metaclass__ = IdentLikeToken
-#
-#     def __init__(self, clsname, base, dct, current_char, stream):
-#         pass
-#
-#     def __new__(cls, clsname, base, dct, current_char, stream):
-#         return super(URLToken, cls).__new__(cls, clsname, base, dct)
+
+def numeric_token_chooser(char, stream):
+    raise NotImplementedError
+
+
+def ident_like_token_chooser(char, stream):
+    raise NotImplementedError
+
+
+def delim_token_chooser(char, stream):
+    raise NotImplementedError
+
+
+def string_chooser(char, stream):
+    if char not in ['"', "'"]:
+        raise ValueError("A string has to start with a quotation mark")
+    quote_type = char
+    string_token = ''
+    next_char = stream.consume_raw_stream(1)
+    while next_char != quote_type:
+        string_token += next_char
+        next_char = stream.consume_raw_stream(1)
+    return StringToken(string_token)
+
+
+def url_chooser(char, stream):
+    raise NotImplementedError
 
 
 class CSSToken(object):
@@ -218,6 +199,12 @@ class CSSToken(object):
         self.match = self.stream
         self.value = self.match
 
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
 
 class LiteralToken(CSSToken):
     _regex = re.compile('[,:;\(\)\[\{\]\}]')
@@ -241,14 +228,14 @@ class LiteralToken(CSSToken):
 
     def tokenize(self):
         """This function is unnecessary because literals can get skipped,
-        however is necessary for the inheritance tree and the way the function calls work
+        however is necessary for the inheritance tree and the way the function
+        calls work.
         """
         pass
 
 
 # Todo: implement
 class IdentToken(CSSToken):
-    #_metaclass__ = IdentLikeToken
     _regex = None
     _value = ''
     _match = None
@@ -275,7 +262,6 @@ class IdentToken(CSSToken):
 
 # Todo: implement
 class FunctionToken(CSSToken):
-    #_metaclass__ = IdentLikeToken
     _regex = None
     _value = ''
     _match = None
@@ -341,99 +327,41 @@ class HashToken(CSSToken):
     @type.setter
     def type(self, type_):
         if type_ not in HashToken._possible_types:
-            raise ValueError("Type must be either 'id' or 'unrestricted', not {}".format(type_))
+            raise ValueError(
+                "Type must be either 'id' or 'unrestricted', not {}".format(type_))
 
 
 # Todo: implement
-class GoodStringToken(CSSToken):
-    #_metaclass__ = StringToken
+class StringToken(CSSToken):
     _regex = None
     _value = ''
     _match = None
 
-    def __init__(self, first='', stream=deque()):
-        super(GoodStringToken, self).__init__(first, stream)
+    def __init__(self, string):
+        self.value = string
+        self._match = True
 
     @property
     def value(self):
-        raise NotImplementedError
+        return self._value
 
     @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
+    def value(self, string):
+        self._value = string
 
     @property
     def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
+        return self._match
 
 
 # Todo: implement
-class BadStringToken(CSSToken):
-    #_metaclass__ = StringToken
+class URLToken(CSSToken):
     _regex = None
     _value = ''
     _match = None
 
     def __init__(self, first='', stream=deque()):
-        super(BadStringToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class GoodURLToken(CSSToken):
-    #_metaclass__ = URLToken
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(GoodURLToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class BadURLToken(CSSToken):
-    #_metaclass__ = URLToken
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(BadURLToken, self).__init__(first, stream)
+        super(URLToken, self).__init__(first, stream)
 
     @property
     def value(self):
@@ -454,7 +382,6 @@ class BadURLToken(CSSToken):
 
 # Todo: implement
 class DelimToken(CSSToken):
-    #_metaclass__ = DelimTokenMeta
     _regex = None
     _value = ''
     _match = None
@@ -481,7 +408,6 @@ class DelimToken(CSSToken):
 
 # Todo: implement
 class NumberToken(CSSToken):
-    #_metaclass__ = NumericToken
     _regex = None
     _value = ''
     _match = None
@@ -508,7 +434,6 @@ class NumberToken(CSSToken):
 
 # Todo: implement
 class PercentageToken(CSSToken):
-    #_metaclass__ = NumericToken
     _regex = None
     _value = ''
     _match = None
@@ -535,7 +460,6 @@ class PercentageToken(CSSToken):
 
 # Todo: implement
 class DimensionToken(CSSToken):
-    #_metaclass__ = NumericToken
     _regex = None
     _value = ''
     _match = None
@@ -745,7 +669,10 @@ class WhitespaceToken(CSSToken):
         current = self.first
         while self.regex.match(current):
             matched += current
-            current = stream.consume_token()
+            try:
+                current = stream.consume_raw_stream()
+            except IndexError:
+                break
         if matched:
             self._match = True
 
@@ -937,61 +864,87 @@ class CSSTokenizer(object):
     letters = re.compile('[a-zA-Z_]')
     numbers = re.compile('\d')
     EOF = re.compile('\Z')
-    _stream = deque()
+    _stream = None
     _current = None
-    # In all cases a DelimToken has more than one possible option.  I'm not positive how I'm going to handle this.  I
-    # can sort of imagine some metaclass wizardry, or make DelimToken a function instead of a class and then have it
-    # return a DToken object (or something) if all else fails.  That sort of sounds like metaclass wizardry though
-    instructions = {'(': LiteralToken, ')': LiteralToken, ',': LiteralToken, ':': LiteralToken, ';': LiteralToken,
-                    '[': LiteralToken, ']': LiteralToken, '{': LiteralToken, '}': LiteralToken,
-                    ' ': WhitespaceToken,   # All whitespace is generalized into a single space (in tokenize_stream)
-                    # "'": StringToken("GoodStringToken", (CSSToken,), {}, _current, _stream),
-                    # '"': StringToken("GoodStringToken", (CSSToken,), {}, _current, _stream),
-                    # '0': NumericToken,   # This is handled below, all numbers are this entry
-                    # 'a': IdentLikeToken,   # This is handled below, all letters and the `_` are this entry
-                    # '#': DelimTokenMeta,   # If the next input code point is a name code point or the next two input code
-                    #                    # points are a valid escape, then:
-                    #                    #      1. Create a <hash-token>.
-                    #                    #      2. If the next 3 input code points would start an identifier, set the
-                    #                    #      <hash-token>’s type flag to "id".
-                    #                    #      3. Consume a name, and set the <hash-token>’s value to the returned string.
-                    #                    #      4. Return the <hash-token>.
-                    # '$': DelimTokenMeta,   # If the next token is U+003D EQUALS SIGN (=) then its a suffix match token
-                    # '*': DelimTokenMeta,   # If the next token is U+003D EQUALS SIGN (=) then its a substring match token
-                    # '+': DelimTokenMeta,   # If the stream started with a number, reconsume the current input code point,
-                    #                    # consume a numeric token and return it.
-                    # '-': DelimTokenMeta,   # If the stream started with a number, reconsume the current input code point,
-                    #                    # consume a numeric token, and return it.
-                    #                    # If the next 2 input code points are:
-                    #                    #  U+002D HYPHEN-MINUS U+003E GREATER-THAN SIGN (->),
-                    #                    # consume them and return a <CDC-token>.
-                    #                    # If the input stream starts with an identifier, reconsume the current input
-                    #                    # code point, consume an ident-like token, and return it.
-                    # '.': DelimTokenMeta,   # If the input stream starts with a number, reconsume the current input code
-                    #                    # point, consume a numeric token, and return it.
-                    # '<': DelimTokenMeta,   # If the next 3 input code points are U+0021 EXCLAMATION MARK U+002D HYPHEN-MINUS
-                    #                    # U+002D HYPHEN-MINUS (!--), consume them and return a <CDO-token>.
-                    # '@': DelimTokenMeta,   # If the next 3 input code points would start an identifier, consume a name,
-                    #                    # create an <at-keyword-token> with its value set to the returned value,
-                    #                    # and return it.
-                    # '\\': DelimTokenMeta,  # If the input stream starts with a valid escape, reconsume the current input
-                    #                    # code point, consume an ident-like token, and return it.  Otherwise, this is a
-                    #                    # parse error. Return a <delim-token> with its value set to the current input
-                    #                    # code point.
-                    # '^': DelimTokenMeta,   # If the next input code point is U+003D EQUALS SIGN (=), consume it and return
-                    #                    # a <prefix-match-token>.
-                    # '|': DelimTokenMeta,   # If the next input code point is U+003D EQUALS SIGN (=), consume it and return a
-                    #                    # <dash-match-token>.
-                    #                    # Otherwise, if the next input code point is U+0073 VERTICAL LINE (|), consume it
-                    #                    # and return a <column-token>.
-                    # '~': DelimTokenMeta   # If the next input code point is U+003D EQUALS SIGN (=), consume it and return
-                    #                    # an <include-match-token>.
+    # In all cases a DelimToken has more than one possible option.
+    # I'm not positive how I'm going to handle this.  I can sort of imagine
+    # some metaclass wizardry, or make DelimToken a function instead of a class
+    # and then have it return a DToken object (or something) if all else fails.
+    # That sort of sounds like metaclass wizardry though
+    instructions = {'(': LiteralToken, ')': LiteralToken, ',': LiteralToken,
+                    ':': LiteralToken, ';': LiteralToken, '[': LiteralToken,
+                    ']': LiteralToken, '{': LiteralToken, '}': LiteralToken,
+                    ' ': WhitespaceToken,   # Whitespace is generalized as ' '
+                    "'": string_chooser, '"': string_chooser,
+                    '0': numeric_token_chooser,   # Numbers are generalized
+                    'a': ident_like_token_chooser,  # 'Letters' are generalized
+                    '#': delim_token_chooser,
+                        # If the next input code point is a name code point or
+                        # the next two input code points are a valid escape,
+                        # then:
+                        #      1. Create a <hash-token>.
+                        #      2. If the next 3 input code points would start
+                        #         an identifier, set the <hash-token>’s type
+                        #         flag to "id".
+                        #      3. Consume a name, and set the <hash-token>’s
+                        #         value to the returned string.
+                        #      4. Return the <hash-token>.
+                    '$': delim_token_chooser,
+                        # If the next token is U+003D EQUALS SIGN (=) then its
+                        # a suffix match token
+                    '*': delim_token_chooser,
+                        # If the next token is U+003D EQUALS SIGN (=) then its
+                        # a substring match token
+                    '+': delim_token_chooser,
+                        # If the stream started with a number, reconsume the
+                        # current input code point, consume a numeric token and
+                        # return it.
+                    '-': delim_token_chooser,
+                        # If the stream started with a number, reconsume the
+                        # current input code point, consume a numeric token,
+                        # and return it.  If the next 2 input code points are
+                        # U+002D HYPHEN-MINUS U+003E GREATER-THAN SIGN (->),
+                        # consume them and return a <CDC-token>.
+                        # If the input stream starts with an identifier,
+                        # reconsume the current input code point, consume an
+                        # ident-like token, and return it.
+                    '.': delim_token_chooser,
+                        # If the input stream starts with a number, reconsume
+                        # the current input code point, consume a numeric
+                        # token, and return it.
+                    '<': delim_token_chooser,
+                        # If the next 3 input code points are U+0021
+                        # EXCLAMATION MARK U+002D HYPHEN-MINUS U+002D
+                        # HYPHEN-MINUS (!--), consume them and return a
+                        # <CDO-token>.
+                    '@': delim_token_chooser,
+                        # If the next 3 input code points would start an
+                        # identifier, consume a name, create an
+                        # <at-keyword-token> with its value set to the returned
+                        #  value, and return it.
+                    '\\': delim_token_chooser,
+                        # If the input stream starts with a valid escape,
+                        # reconsume the current input code point, consume an
+                        # ident-like token, and return it.  Otherwise, this is
+                        # a parse error. Return a <delim-token> with its value
+                        # set to the current input code point.
+                    '^': delim_token_chooser,
+                        # If the next input code point is U+003D EQUALS SIGN
+                        # (=), consume it and return a <prefix-match-token>.
+                    '|': delim_token_chooser,
+                        # If the next input code point is U+003D EQUALS SIGN
+                        # (=), consume it and return a <dash-match-token>.
+                        # Otherwise, if the next input code point is U+0073
+                        # VERTICAL LINE (|), consume it and return a
+                        # <column-token>.
+                    '~': delim_token_chooser
+                        # If the next input code point is U+003D EQUALS SIGN
+                        # (=), consume it and return an <include-match-token>.
                     }
 
     def __init__(self, iterable=()):
         self.tokens = deque()
-        self.stream = iterable
-        self.tokenize_stream()
+        self.stream = deque(iterable)
 
     @property
     def stream(self):
@@ -999,7 +952,10 @@ class CSSTokenizer(object):
 
     @stream.setter
     def stream(self, value):
-        self._stream.extend(value)
+        if self.stream is None:
+            self._stream = deque(value)
+        else:
+            self._stream.extend(value)
 
     def tokenize_stream(self):
         while self.stream:
@@ -1011,17 +967,21 @@ class CSSTokenizer(object):
                     token_type = CSSTokenizer.instructions['0']
                 elif CSSTokenizer.letters.match(self._current):
                     token_type = CSSTokenizer.instructions['a']
+                elif self._current in CSSTokenizer.instructions:
+                    token_type = CSSTokenizer.instructions[self._current]
                 elif CSSTokenizer.EOF.match(self._current):
                     token_type = EOFToken()
                 else:
-                    token_type = DelimToken(self._current)
+                    token_type = delim_token_chooser(
+                        self._current, self.stream)
             except KeyError as e:
-                logging.warn("Unknown character `{}`.  Skipping".format(self._current))
+                logging.warn(
+                    "Unknown character `{}`.  Skipping".format(self._current))
             else:
-                self.tokens.append(token_type(self._current, self.stream))
+                self.tokens.append(token_type(self._current, self))
 
-    def consume_token(self, number=1):
-        return CSSTokenizer._consume(self.tokens, number)
+    def consume_token(self):
+        return self.tokens.popleft()
 
     def consume_raw_stream(self, number=1):
         return CSSTokenizer._consume(self.stream, number)

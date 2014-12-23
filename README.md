@@ -1,5 +1,6 @@
 [![Docs built](https://readthedocs.org/projects/webbrowser/badge/?version=latest)](http://webbrowser.readthedocs.org/en/latest/)
 [![Build passed](https://travis-ci.org/Dannnno/WebBrowser.svg?branch=master)](https://travis-ci.org/Dannnno/WebBrowser)
+[![Coverage Status](https://coveralls.io/repos/Dannnno/WebBrowser/badge.png)](https://coveralls.io/r/Dannnno/WebBrowser)
 ## Dannnno's WebBrowser
 
 This is a very long term project I'm going to play around with.  In general I'm interested in how to most effectively
