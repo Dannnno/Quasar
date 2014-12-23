@@ -153,7 +153,17 @@ def string_chooser(char, stream):
     string_token = ''
     next_char = stream.consume_raw_stream(1)
     while next_char != quote_type:
-        string_token += next_char
+        if next_char in ['\n', '\r', '\f']:   # a newline is a parse error
+            if string_token[-1] != '\\':
+                stream._stream.appendleft(next_char)
+                return BadStringToken()
+            elif next_char == '\r':
+                peek = stream.stream_peek(1)
+                if peek == '\n':
+                    stream.consume_raw_stream(1)
+            string_token += '\\n'
+        else:
+            string_token += next_char
         next_char = stream.consume_raw_stream(1)
     return StringToken(string_token)
 
@@ -331,7 +341,6 @@ class HashToken(CSSToken):
                 "Type must be either 'id' or 'unrestricted', not {}".format(type_))
 
 
-# Todo: implement
 class StringToken(CSSToken):
     _regex = None
     _value = ''
@@ -352,6 +361,12 @@ class StringToken(CSSToken):
     @property
     def match(self):
         return self._match
+
+
+class BadStringToken(StringToken):
+
+    def __init__(self):
+        super(BadStringToken, self).__init__('')
 
 
 # Todo: implement
@@ -972,8 +987,7 @@ class CSSTokenizer(object):
                 elif CSSTokenizer.EOF.match(self._current):
                     token_type = EOFToken()
                 else:
-                    token_type = delim_token_chooser(
-                        self._current, self.stream)
+                    token_type = delim_token_chooser
             except KeyError as e:
                 logging.warn(
                     "Unknown character `{}`.  Skipping".format(self._current))
@@ -1005,7 +1019,6 @@ class CSSTokenizer(object):
             try:
                 consumed += deq.popleft()
             except IndexError:
-                # Deque is empty
                 return consumed
             number -= 1
         return consumed

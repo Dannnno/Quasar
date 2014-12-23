@@ -3,7 +3,7 @@
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 from WebBrowser.parser.tokens.css_tokens import CSSTokenizer, preprocessing, \
-    WhitespaceToken, LiteralToken, StringToken
+    WhitespaceToken, LiteralToken, StringToken, BadStringToken
 
 
 class TestLiteralTokens(object):
@@ -146,3 +146,32 @@ class TestStringTokens(object):
         assert not stream._stream
         assert isinstance(string_token, StringToken)
         assert str(string_token) == 'I am a string'
+
+    @staticmethod
+    def test_good_string2():
+        stream = CSSTokenizer('"I am also a string"')
+        stream.tokenize_stream()
+        string_token = stream.consume_token()
+        assert not stream._stream
+        assert isinstance(string_token, StringToken)
+        assert str(string_token) == 'I am also a string'
+
+    @staticmethod
+    def test_good_string3():
+        stream = CSSTokenizer('''"I have an \\nokay newline"''')
+        stream.tokenize_stream()
+        string_token = stream.consume_token()
+        assert not stream._stream
+        assert isinstance(string_token, StringToken)
+        assert str(string_token) == 'I am also a \\n string'
+
+    @staticmethod
+    def test_bad_string1():
+        # I need to have other parts working that handle non-string tokens to
+        # pick up from the bad string
+        # raise SkipTest
+        stream = CSSTokenizer('"Guess what I\n am?"')
+        stream.tokenize_stream()
+        string_token = stream.consume_token()
+        assert isinstance(string_token, BadStringToken)
+        assert str(string_token) == ''
