@@ -1,6 +1,6 @@
-[![Docs built](https://readthedocs.org/projects/webbrowser/badge/?version=latest)](http://webbrowser.readthedocs.org/en/latest/)
-[![Build passed](https://travis-ci.org/Dannnno/WebBrowser.svg?branch=master)](https://travis-ci.org/Dannnno/WebBrowser)
-[![Coverage Status](https://coveralls.io/repos/Dannnno/WebBrowser/badge.png)](https://coveralls.io/r/Dannnno/WebBrowser)
+[![Docs built](https://readthedocs.org/projects/quasar/badge/?version=latest)](http://quasar.readthedocs.org/en/latest/)
+[![Build passed](https://travis-ci.org/Dannnno/Quasar.svg?branch=master)](https://travis-ci.org/Dannnno/Quasar)
+[![Coverage Status](https://coveralls.io/repos/Dannnno/Quasar/badge.png)](https://coveralls.io/r/Dannnno/Quasar)
 ## Dannnno's WebBrowser: Quasar
 
 This is a very long term project I'm going to play around with.  In general I'm interested in how to most effectively
