@@ -37,7 +37,7 @@ import logging
 import os
 import re
 
-from WebBrowser.parser.tokens.tokens import Token
+from WebBrowser.parser.tokens import Token
 
 
 logging.basicConfig(
@@ -51,6 +51,7 @@ replacement_character = u'\uFFFD'   # Default replacement character
 replace_characters[u'u\000Du\000F'] = line_feed   # Carriage Return + Line Feed
 replace_characters[u'u\000D'] = line_feed   # Carriage Return (CR)
 replace_characters[u'u\000C'] = line_feed   # Form Feed (FF)
+replace_characters['\r\n'] = '\n'
 replace_characters[u'u\0000'] = replacement_character
 
 CSS_token_literals = {';': 'COLON',
@@ -61,70 +62,6 @@ CSS_token_literals = {';': 'COLON',
                       ')': 'RPAREN',
                       '{': 'LCURLY',
                       '}': 'RCURLY'}
-
-CSS_tokens = {"<ident-token>": re.compile("""
-                                      (?:--|-|\A) # an ident can start with an optional -/--
-                                      ([^\x00-\x7F]   # This matches non ascii characters
-                                       |
-                                       [a-zA-Z_]|-   # Otherwise we match letters mostly
-                                       |
-                                       (\\\\[^a-fA-F0-9\r\n\f]\Z|\\\\[a-fA-F0-9](?:\Z|\s))   # Escape token below
-                                      )+
-                                          """, re.VERBOSE),
-              "<function-token>":
-                 # This is just the ident-token plus an open paren
-                 re.compile("-{,2}([^\x00-\x7F]|[a-zA-Z_\\\\-]|(\\[^a-fA-F0-9\r\n\f]\Z|\\[a-fA-F0-9](?:\Z|\s)))+\("),
-              "<at-keyword-token>":
-                 # This is just an @ sign plus the ident-token
-                 re.compile("@-{,2}([^\x00-\x7F]|[a-zA-Z_\\\\-]|(\\[^a-fA-F0-9\r\n\f]\Z|\\[a-fA-F0-9](?:\Z|\s)))+"),
-              "<hash-token>": # This is just a # sign plus a word or escape sequence
-                              re.compile("""
-                                     [#]   # Matching the hash sign
-                                     ([^\x00-\x7F]   # This matches non ascii characters
-                                      |
-                                      [a-zA-Z0-9]|-   # Otherwise we match a word-character
-                                      |
-                                      (\\\\([^a-fA-F0-9\r\n\f]\Z)|([a-fA-F0-9](?:\Z|\s))))+   # Escape token below
-                                         """, re.VERBOSE),
-              "<string-token>": re.compile("""
-                                      (?P<quote> "|')   # which we start with
-                                      ([^(?P=<quote>)\\\n\r\f]   # strings, but not multiline
-                                       |
-                                       \\\\([^a-fA-F0-9\r\n\f]\Z)|([a-fA-F0-9](?:\Z|\s))   # Escape token below
-                                       |
-                                       \\\\[\n\r\f]|\\\\\r\n   # Collecting escaped newlines
-                                      )+
-                                      [(?P=<quote>)]\Z  # which we started with
-                                           """, re.VERBOSE),
-              "<bad-string-token>": None,
-              "<url-token>": re.compile("""
-                                       url   # starts with url
-                                       \(   # lparen
-                                        \s*   # optional whitespace
-                                        ([^"'\\\\\s]   #not quotes, slashes or newlines
-                                         |
-                                         (\\\\([^a-fA-F0-9\r\n\f]\Z)|([a-fA-F0-9](?:\Z|\s))))*  # Escape token below
-                                        \s*   # optional whitespace
-                                       \)   # endparen
-                                        """, re.VERBOSE),
-              "<comment-token>": re.compile(r"""
-                                        /   # match the leading slash
-                                        \*   # match the opening star
-                                        ([^*])*   # match anything but a star, optionally
-                                        \*   # match the ending star
-                                        /   # match the ending slash
-                                             """, re.VERBOSE),
-              "<hex-digit-token>": re.compile("[a-fA-F0-9]\Z"),
-              "<escape-token>": re.compile("""
-                                       \\\\   # always starts with a backslash
-                                       ([^a-fA-F0-9\r\n\f]\Z   # escaping symbols and spaces
-                                        |
-                                        [a-fA-F0-9](?:\Z|\s+))   # 1-6 hex digits followed by optional whitespace
-                                           """, re.VERBOSE),
-              "<newline-token>": re.compile("""
-                                            [\n\r\f]{1}(\n|\Z)
-                                            """, re.VERBOSE)
-              }
 
 
 def preprocessing(unicode_string, encoding='UTF_8'):
@@ -143,7 +80,57 @@ def ident_like_token_chooser(char, stream):
 
 
 def delim_token_chooser(char, stream):
-    raise NotImplementedError
+    if char == '#':
+        hash_type = 'unrestricted'
+        first, second, third = stream.stream_peek(3)
+        if ((first == '-' or
+                CSSTokenizer.letters.match(first) or
+                CSSTokenizer.numbers.match(first)) or
+            (first == '\\' and
+                not CSSTokenizer.newlines.match(second))):
+            # Check if the next three are a valid identifier
+            if first == '-':
+                if (second == '-' or
+                     (CSSTokenizer.letters.match(second) or
+                         CSSTokenizer.numbers.match(second)) or
+                     (second == '\\' and
+                         not CSSTokenizer.newlines.match(third))):
+                    hash_type = 'id'
+            elif first == '\\':
+                if (second == '-' or
+                     (CSSTokenizer.letters.match(second) or
+                         CSSTokenizer.numbers.match(second)) or
+                     (second == '\\' and
+                         not CSSTokenizer.newlines.match(third))):
+                    hash_type = 'id'
+            elif (CSSTokenizer.letters.match(first) or
+                    CSSTokenizer.numbers.match(first)):
+                if (second == '-' or
+                     (CSSTokenizer.letters.match(second) or
+                         CSSTokenizer.numbers.match(second)) or
+                     (second == '\\' and
+                         not CSSTokenizer.newlines.match(third))):
+                    hash_type = 'id'
+            result = ''
+            next_char = stream.consume_raw_stream()
+            while next_char:
+                if (next_char == '-' or
+                     (CSSTokenizer.letters.match(next_char) or
+                         CSSTokenizer.numbers.match(next_char)) or
+                     (next_char == '\\' and
+                         not CSSTokenizer.newlines.match(next_char))):
+                    result += next_char
+                    try:
+                        next_char = stream.consume_raw_stream()
+                    except IndexError:
+                        break
+                else:
+                    break
+            return HashToken(result, type_=hash_type)
+        else:
+            return DelimToken(char)
+    else:
+        raise NotImplementedError
 
 
 def string_chooser(char, stream):
@@ -153,14 +140,11 @@ def string_chooser(char, stream):
     string_token = ''
     next_char = stream.consume_raw_stream(1)
     while next_char != quote_type:
-        if next_char in ['\n', '\r', '\f']:   # a newline is a parse error
+        if next_char in ['\n', '\r', '\f']:
+            # An unescaped newline is a parse error
             if string_token[-1] != '\\':
                 stream._stream.appendleft(next_char)
                 return BadStringToken()
-            elif next_char == '\r':
-                peek = stream.stream_peek(1)
-                if peek == '\n':
-                    stream.consume_raw_stream(1)
             string_token += '\\n'
         else:
             string_token += next_char
@@ -322,23 +306,37 @@ class AtKeywordToken(CSSToken):
         raise NotImplementedError
 
 
-# Todo: implement
 class HashToken(CSSToken):
     _type = "unrestricted"
+    _value = ''
     _possible_types = ['id', 'unrestricted']
 
-    def __init__(self, first='', stream=deque()):
-        super(HashToken, self).__init__(first, stream)
+    def __init__(self, val, type_='unrestricted'):
+        self.type_ = type_
+        self.value = val
 
     @property
-    def type(self):
+    def type_(self):
         return self._type
 
-    @type.setter
-    def type(self, type_):
+    @type_.setter
+    def type_(self, type_):
         if type_ not in HashToken._possible_types:
             raise ValueError(
-                "Type must be either 'id' or 'unrestricted', not {}".format(type_))
+                "Type must be either 'id' or 'unrestricted', not {}".format(
+                    type_))
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        self._value = new_value
+
+    @property
+    def match(self):
+        return True
 
 
 class StringToken(CSSToken):
@@ -395,30 +393,21 @@ class URLToken(CSSToken):
         raise NotImplementedError
 
 
-# Todo: implement
 class DelimToken(CSSToken):
-    _regex = None
     _value = ''
     _match = None
 
-    def __init__(self, first='', stream=deque()):
-        super(DelimToken, self).__init__(first, stream)
+    def __init__(self, char):
+        self._value = char
+        self._match = True
 
     @property
     def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
+        return self._value
 
     @property
     def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
+        return self._match
 
 
 # Todo: implement
@@ -875,17 +864,6 @@ class EOFToken(CSSToken):
 
 
 class CSSTokenizer(object):
-    whitespace = re.compile('\s')
-    letters = re.compile('[a-zA-Z_]')
-    numbers = re.compile('\d')
-    EOF = re.compile('\Z')
-    _stream = None
-    _current = None
-    # In all cases a DelimToken has more than one possible option.
-    # I'm not positive how I'm going to handle this.  I can sort of imagine
-    # some metaclass wizardry, or make DelimToken a function instead of a class
-    # and then have it return a DToken object (or something) if all else fails.
-    # That sort of sounds like metaclass wizardry though
     instructions = {'(': LiteralToken, ')': LiteralToken, ',': LiteralToken,
                     ':': LiteralToken, ';': LiteralToken, '[': LiteralToken,
                     ']': LiteralToken, '{': LiteralToken, '}': LiteralToken,
@@ -956,8 +934,20 @@ class CSSTokenizer(object):
                         # If the next input code point is U+003D EQUALS SIGN
                         # (=), consume it and return an <include-match-token>.
                     }
+    whitespace = re.compile('\s')
+    letters = re.compile('[a-zA-Z_]')
+    numbers = re.compile('\d')
+    newlines = re.compile('[\n\r\f]')
+    EOF = re.compile('\Z')
+
+    _stream = None
+    _current = None
 
     def __init__(self, iterable=()):
+        if isinstance(iterable, basestring):
+            iterable = preprocessing(iterable)
+        else:
+            iterable = ''.join(map(preprocessing, iterable))
         self.tokens = deque()
         self.stream = deque(iterable)
 
