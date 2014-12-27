@@ -37,7 +37,7 @@ import logging
 import os
 import re
 
-from WebBrowser.parser.tokens import Token
+from Quasar.parser.tokens import Token
 
 
 logging.basicConfig(

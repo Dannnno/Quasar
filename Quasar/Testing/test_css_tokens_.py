@@ -3,7 +3,7 @@
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 
-from WebBrowser.parser.tokens.css_tokens import preprocessing, StringToken, \
+from Quasar.parser.tokens.css_tokens import preprocessing, StringToken, \
     WhitespaceToken, LiteralToken, BadStringToken, string_chooser, \
     CSSTokenizer, HashToken, delim_token_chooser, DelimToken
 

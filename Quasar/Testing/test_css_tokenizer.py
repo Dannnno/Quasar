@@ -2,7 +2,7 @@
 
 from nose.plugins.skip import SkipTest
 
-from WebBrowser.parser.tokens.css_tokens import CSSTokenizer, StringToken, \
+from Quasar.parser.tokens.css_tokens import CSSTokenizer, StringToken, \
     BadStringToken, LiteralToken, WhitespaceToken
 
 
