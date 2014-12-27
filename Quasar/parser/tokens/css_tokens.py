@@ -4,32 +4,43 @@
 """
 4. Tokenization
 
-Implementations must act as if they used the following algorithms to tokenize CSS. To transform a stream of code points
-into a stream of tokens, repeatedly consume a token until an <EOF-token> is reached, collecting the returned tokens into
- a stream. Each call to the consume a token algorithm returns a single token, so it can also be used "on-demand" to
- tokenize a stream of code points during parsing, if so desired.
+Implementations must act as if they used the following algorithms to tokenize
+CSS. To transform a stream of code points into a stream of tokens, repeatedly
+consume a token until an <EOF-token> is reached, collecting the returned tokens
+into a stream. Each call to the consume a token algorithm returns a single
+token, so it can also be used "on-demand" to tokenize a stream of code points
+during parsing, if so desired.
 
-The output of the tokenization step is a stream of zero or more of the following tokens:
+The output of the tokenization step is a stream of zero or more of the
+following tokens:
 
-    <ident-token>, <function-token>, <at-keyword-token>, <hash-token>, <string-token>, <bad-string-token>,
-    <url-token>, <bad-url-token>, <delim-token>, <number-token>, <percentage-token>, <dimension-token>,
-    <include-match-token>, <dash-match-token>, <prefix-match-token>, <suffix-match-token>, <substring-match-token>,
-    <column-token>, <whitespace-token>, <CDO-token>, <CDC-token>, <colon-token>, <semicolon-token>, <comma-token>,
-    <[-token>, <]-token>, <(-token>, <)-token>, <{-token>, and <}-token>.
+    <ident-token>, <function-token>, <at-keyword-token>, <hash-token>,
+    <string-token>, <bad-string-token>, <url-token>, <bad-url-token>,
+    <delim-token>, <number-token>, <percentage-token>, <dimension-token>,
+    <include-match-token>, <dash-match-token>, <prefix-match-token>,
+    <suffix-match-token>, <substring-match-token>, <column-token>,
+    <whitespace-token>, <CDO-token>, <CDC-token>, <colon-token>,
+    <semicolon-token>, <comma-token>, <[-token>, <]-token>, <(-token>,
+    <)-token>, <{-token>, and <}-token>.
 
 Details on those tokens:
 
-    <ident-token>, <function-token>, <at-keyword-token>, <hash-token>, <string-token>, <url-token>:
+    <ident-token>, <function-token>, <at-keyword-token>, <hash-token>,
+      <string-token>, <url-token>:
         - Have a value composed of zero or more code points.
-        - <hash-token>s have a type flag set to either "id" or "unrestricted". The type flag defaults to "unrestricted"
+        - <hash-token>s have a type flag set to either "id" or "unrestricted".
+          The type flag defaults to "unrestricted"
 
     <delim-token> has a value composed of a single code point.
 
     <number-token>, <percentage-token>, <dimension-token>:
-        - Have a representation composed of one or more code points, and a numeric value.
-        - <number-token> and <dimension-token> additionally have a type flag set to either "integer" or "number".
+        - Have a representation composed of one or more code points, and a
+          numeric value.
+        - <number-token> and <dimension-token> additionally have a type flag
+          set to either "integer" or "number".
             - The type flag defaults to "integer" if not otherwise set.
-        - <dimension-token> additionally have a unit composed of one or more code points.
+        - <dimension-token> additionally have a unit composed of one or more
+          code points.
 """
 from collections import OrderedDict, deque
 import logging
@@ -41,22 +52,13 @@ from Quasar import parse_log_file
 logging.basicConfig(filename=parse_log_file, level=logging.INFO)
 
 replace_characters = OrderedDict()
-line_feed = u'u\000A'   # Line Feed
-replacement_character = u'\uFFFD'   # Default replacement character
-replace_characters[u'u\000Du\000F'] = line_feed   # Carriage Return + Line Feed
-replace_characters[u'u\000D'] = line_feed   # Carriage Return (CR)
-replace_characters[u'u\000C'] = line_feed   # Form Feed (FF)
-replace_characters['\r\n'] = '\n'
-replace_characters[u'u\0000'] = replacement_character
-
-CSS_token_literals = {';': 'COLON',
-                      ',': 'COMMA',
-                      '[': 'LBRACK',
-                      ']': 'RBRACK',
-                      '(': 'LPAREN',
-                      ')': 'RPAREN',
-                      '{': 'LCURLY',
-                      '}': 'RCURLY'}
+line_feed = u'\u000A'   # New line (\n)
+replacement_character = u'\uFFFD'   # Default replacement character (�)
+replace_characters[u'\u000D\u000A'] = line_feed   # Carriage Return + New Line
+replace_characters[u'\u000D\u000F'] = line_feed   # Carriage Return + Line Feed
+replace_characters[u'\u000D'] = line_feed   # Carriage Return (CR)
+replace_characters[u'\u000C'] = line_feed   # Form Feed (FF)
+replace_characters[u'\u0000'] = replacement_character
 
 
 def preprocessing(unicode_string):
@@ -180,11 +182,7 @@ class CSSTokenizer(object):
 
     @stream.setter
     def stream(self, value):
-        value = preprocessing(value)
-        if self.stream is None:
-            self._stream = deque(value)
-        else:
-            self._stream.extend(value)
+        self._stream = deque(preprocessing(value))
 
     @property
     def tokens(self):
@@ -219,7 +217,7 @@ class CSSTokenizer(object):
         while self.stream:
             if self.next_code_point is None:
                 break
-            self.current_code_point = self.consume_next_code_point()
+            self.consume_next_code_point()
             if self.current_code_point == CSSTokenizer.forward_slash:
                 self.consume_comment()
             elif CSSTokenizer.whitespace.match(self.current_code_point):
@@ -298,13 +296,13 @@ class CSSTokenizer(object):
         ending_asterisk = False
         if self.next_code_point == CSSTokenizer.asterisk:
             while self.next_code_point is not None:
-                next_point = self.consume_next_code_point()
+                self.consume_next_code_point()
                 if ending_asterisk:
-                    if next_point == CSSTokenizer.forward_slash:
+                    if self.current_code_point == CSSTokenizer.forward_slash:
                         return
                     else:
                         ending_asterisk = False
-                if next_point == CSSTokenizer.asterisk:
+                if self.current_code_point == CSSTokenizer.asterisk:
                     ending_asterisk = True
         else:
             self.consume_delim_token()
@@ -317,9 +315,13 @@ class CSSTokenizer(object):
 
     def _consume_digits(self):
         digit_string = ''
-        while CSSTokenizer.digit.match(self.next_code_point):
-            self.current_code_point = self.consume_next_code_point()
+        if CSSTokenizer.digit.match(self.current_code_point):
             digit_string += self.current_code_point
+        while CSSTokenizer.digit.match(self.next_code_point):
+            self.consume_next_code_point()
+            digit_string += self.current_code_point
+            if self.next_code_point is None:
+                break
         return digit_string
 
     def _consume_number(self):
@@ -335,7 +337,7 @@ class CSSTokenizer(object):
 
         # Values after the decimal point
         if CSSTokenizer.full_stop == self.next_code_point:
-            self.current_code_point = self.consume_next_code_point()
+            self.consume_next_code_point()
             if CSSTokenizer.digit.match(self.next_code_point):
                 type_flag = 'number'
                 string_representation += self.current_code_point
@@ -344,12 +346,12 @@ class CSSTokenizer(object):
         # Scientific notation
         if self.next_code_point in ['e', 'E']:
             possible_scientific_notation = ''
-            self.current_code_point = self.consume_next_code_point()
+            self.consume_next_code_point()
             possible_scientific_notation += self.current_code_point
 
             # Optional sign of the number
             if self.next_code_point in [CSSTokenizer.plus, CSSTokenizer.minus]:
-                self.current_code_point = self.consume_next_code_point()
+                self.consume_next_code_point()
                 possible_scientific_notation += self.current_code_point
 
             # Values after the (optional) sign
@@ -358,29 +360,37 @@ class CSSTokenizer(object):
                 possible_scientific_notation += self._consume_digits()
                 string_representation += possible_scientific_notation
 
-        numeric_value = float(string_representation)
+        if type_flag == 'number':
+            numeric_value = float(string_representation)
+        else:
+            numeric_value = int(string_representation)
 
         return string_representation, numeric_value, type_flag
 
     def consume_numeric_token(self):
         string_repr, numeric_value, type_flag = self._consume_number()
-        if self._starts_identifier():
-            name = self.consume_name()
-            return DimensionToken(string_repr, numeric_value, type_flag, name)
-        elif self.next_code_point == CSSTokenizer.percent:
-            self.current_code_point = self.consume_next_code_point()
-            return PercentageToken(string_repr, numeric_value)
+        if self.next_code_point == CSSTokenizer.percent:
+            self.consume_next_code_point()
+            self.tokens.append(PercentageToken(string_repr, numeric_value))
         else:
-            return NumberToken(string_repr, numeric_value, type_flag)
+            if self.next_code_point is not None:
+                self.consume_next_code_point()
+                if self._starts_identifier():
+                    name = self.current_code_point + self._consume_name()
+                    self.tokens.append(DimensionToken(
+                        string_repr, numeric_value, type_flag, name))
+            else:
+                self.tokens.append(
+                    NumberToken(string_repr, numeric_value, type_flag))
 
-    def consume_name(self):
+    def _consume_name(self):
         result = ''
         while self.stream:
-            self.current_code_point = self.consume_next_code_point()
+            self.consume_next_code_point()
             if CSSTokenizer.name.match(self.current_code_point):
                 result += self.current_code_point
-            elif self._valid_escape():
-                self.current_code_point = self.consume_next_code_point()
+            elif self._valid_escape(self.current_code_point,
+                                    self.next_code_point):
                 result += self.consume_escape_token()
             else:
                 self.reconsume_current_code_point()
@@ -412,7 +422,7 @@ class CSSTokenizer(object):
         pass
 
     def consume_escape_token(self):
-        self.current_code_point = self.consume_next_code_point()
+        self.consume_next_code_point()
         return self.current_code_point
 
     def consume_dash_match_token(self):

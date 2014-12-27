@@ -53,3 +53,7 @@ All tests can be run using nose from the commandline
     \Path\To\Directory\Quasar\> nosetests
     
     
+### Naming
+
+I forgot all about Python's builtin module `webbrowser` so I renamed my project from WebBrowser to Quasar.  No particular
+reason, I just think its a cool sounding name.
