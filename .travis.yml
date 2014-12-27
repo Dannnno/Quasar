@@ -8,7 +8,7 @@ install:
   - pip install -r requirements.txt
 # command to run tests
 script: 
-  - nosetests --with-coverage --cover-package=WebBrowser
+  - nosetests --with-coverage --cover-package=Quasar
 # lets not forget coverage
 after_success: 
   - coveralls

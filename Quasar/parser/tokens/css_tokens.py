@@ -32,21 +32,16 @@ Details on those tokens:
         - <dimension-token> additionally have a unit composed of one or more code points.
 """
 from collections import OrderedDict, deque
-import abc
 import logging
-import os
 import re
 
-from Quasar.parser.tokens import Token
+from Quasar import parse_log_file
 
 
-logging.basicConfig(
-    filename=os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "css_token.log"),
-    level=logging.INFO)
+logging.basicConfig(filename=parse_log_file, level=logging.INFO)
 
 replace_characters = OrderedDict()
-line_feed = u'u\000F'   # Line Feed
+line_feed = u'u\000A'   # Line Feed
 replacement_character = u'\uFFFD'   # Default replacement character
 replace_characters[u'u\000Du\000F'] = line_feed   # Carriage Return + Line Feed
 replace_characters[u'u\000D'] = line_feed   # Carriage Return (CR)
@@ -64,892 +59,120 @@ CSS_token_literals = {';': 'COLON',
                       '}': 'RCURLY'}
 
 
-def preprocessing(unicode_string, encoding='UTF_8'):
-    unicode_string = unicode_string.decode(encoding)
+def preprocessing(unicode_string):
+    try:
+        unicode_string = unicode_string.decode('UTF-8')
+    except UnicodeDecodeError:
+        logging.warn("CSS contains invalid characters for UTF-8")
+        acc_unicode_string = ''
+        for code_point in unicode_string:
+            try:
+                acc_unicode_string += code_point.decode('UTF-8')
+            except UnicodeDecodeError:
+                # Skip invalid characters
+                pass
+        unicode_string = acc_unicode_string
     for replaced, replacer in replace_characters.iteritems():
         unicode_string = unicode_string.replace(replaced, replacer)
     return unicode_string
 
 
-def numeric_token_chooser(char, stream):
-    raise NotImplementedError
-
-
-def ident_like_token_chooser(char, stream):
-    raise NotImplementedError
-
-
-def delim_token_chooser(char, stream):
-    if char == '#':
-        hash_type = 'unrestricted'
-        first, second, third = stream.stream_peek(3)
-        if ((first == '-' or
-                CSSTokenizer.letters.match(first) or
-                CSSTokenizer.numbers.match(first)) or
-            (first == '\\' and
-                not CSSTokenizer.newlines.match(second))):
-            # Check if the next three are a valid identifier
-            if first == '-':
-                if (second == '-' or
-                     (CSSTokenizer.letters.match(second) or
-                         CSSTokenizer.numbers.match(second)) or
-                     (second == '\\' and
-                         not CSSTokenizer.newlines.match(third))):
-                    hash_type = 'id'
-            elif first == '\\':
-                if (second == '-' or
-                     (CSSTokenizer.letters.match(second) or
-                         CSSTokenizer.numbers.match(second)) or
-                     (second == '\\' and
-                         not CSSTokenizer.newlines.match(third))):
-                    hash_type = 'id'
-            elif (CSSTokenizer.letters.match(first) or
-                    CSSTokenizer.numbers.match(first)):
-                if (second == '-' or
-                     (CSSTokenizer.letters.match(second) or
-                         CSSTokenizer.numbers.match(second)) or
-                     (second == '\\' and
-                         not CSSTokenizer.newlines.match(third))):
-                    hash_type = 'id'
-            result = ''
-            next_char = stream.consume_raw_stream()
-            while next_char:
-                if (next_char == '-' or
-                     (CSSTokenizer.letters.match(next_char) or
-                         CSSTokenizer.numbers.match(next_char)) or
-                     (next_char == '\\' and
-                         not CSSTokenizer.newlines.match(next_char))):
-                    result += next_char
-                    try:
-                        next_char = stream.consume_raw_stream()
-                    except IndexError:
-                        break
-                else:
-                    break
-            return HashToken(result, type_=hash_type)
-        else:
-            return DelimToken(char)
-    else:
-        raise NotImplementedError
-
-
-def string_chooser(char, stream):
-    if char not in ['"', "'"]:
-        raise ValueError("A string has to start with a quotation mark")
-    quote_type = char
-    string_token = ''
-    next_char = stream.consume_raw_stream(1)
-    while next_char != quote_type:
-        if next_char in ['\n', '\r', '\f']:
-            # An unescaped newline is a parse error
-            if string_token[-1] != '\\':
-                stream._stream.appendleft(next_char)
-                return BadStringToken()
-            string_token += '\\n'
-        else:
-            string_token += next_char
-        next_char = stream.consume_raw_stream(1)
-    return StringToken(string_token)
-
-
-def url_chooser(char, stream):
-    raise NotImplementedError
-
-
 class CSSToken(object):
-    __metaclass__ = Token
-    _value = ''
-    _match = None
-    _stream = deque()
 
-    def __init__(self, first, token_stream):
-        self.first = first
-        self.stream = token_stream
-
-    @property
-    def regex(self):
-        return self._regex
-
-    @property
-    def value(self):
-        return self._value
-
-    @property
-    def stream(self):
-        return self._stream
-
-    @stream.setter
-    def stream(self, stream_):
-        if isinstance(stream_, CSSTokenizer):
-            self._stream = stream_
-        else:
-            self._stream = CSSTokenizer(stream_)
-
-    @abc.abstractproperty
-    def match(self):
-        return self._match
-
-    def tokenize(self):
-        self.match = self.stream
-        self.value = self.match
+    def __init__(self, string):
+        self.value = string
 
     def __str__(self):
         return self.value
 
     def __repr__(self):
-        return str(self)
-
-
-class LiteralToken(CSSToken):
-    _regex = re.compile('[,:;\(\)\[\{\]\}]')
-    _value = None
-    _match = None
-
-    def __init__(self, first, stream=deque()):
-        if self.regex.match(first):
-            self._value = first
-            self._match = True
-        else:
-            raise ValueError("Not a literal, is a {}".format(first))
-
-    @property
-    def value(self):
-        return self._value
-
-    @property
-    def match(self):
-        return self._match
-
-    def tokenize(self):
-        """This function is unnecessary because literals can get skipped,
-        however is necessary for the inheritance tree and the way the function
-        calls work.
-        """
-        pass
-
-
-# Todo: implement
-class IdentToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(IdentToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class FunctionToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(FunctionToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class AtKeywordToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(AtKeywordToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-class HashToken(CSSToken):
-    _type = "unrestricted"
-    _value = ''
-    _possible_types = ['id', 'unrestricted']
-
-    def __init__(self, val, type_='unrestricted'):
-        self.type_ = type_
-        self.value = val
-
-    @property
-    def type_(self):
-        return self._type
-
-    @type_.setter
-    def type_(self, type_):
-        if type_ not in HashToken._possible_types:
-            raise ValueError(
-                "Type must be either 'id' or 'unrestricted', not {}".format(
-                    type_))
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, new_value):
-        self._value = new_value
-
-    @property
-    def match(self):
-        return True
-
-
-class StringToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, string):
-        self.value = string
-        self._match = True
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, string):
-        self._value = string
-
-    @property
-    def match(self):
-        return self._match
-
-
-class BadStringToken(StringToken):
-
-    def __init__(self):
-        super(BadStringToken, self).__init__('')
-
-
-# Todo: implement
-class URLToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(URLToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-class DelimToken(CSSToken):
-    _value = ''
-    _match = None
-
-    def __init__(self, char):
-        self._value = char
-        self._match = True
-
-    @property
-    def value(self):
-        return self._value
-
-    @property
-    def match(self):
-        return self._match
-
-
-# Todo: implement
-class NumberToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(NumberToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class PercentageToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(PercentageToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class DimensionToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(DimensionToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class IncludeMatchToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(IncludeMatchToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class DashMatchToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(DashMatchToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class PrefixMatchToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(PrefixMatchToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class SuffixMatchToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(SuffixMatchToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class SubstringMatchToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(SubstringMatchToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class ColumnToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(ColumnToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
+        return repr(str(self))
 
 
 class WhitespaceToken(CSSToken):
-    _regex = re.compile(r'(\s+)')
-    _value = ' '
-    _match = None
 
-    def __init__(self, first='', stream=deque()):
-        super(WhitespaceToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, regex_match):
-        if regex_match:
-            self._value = ' '
-        else:
-            self._value = None
-
-    @property
-    def match(self):
-        return self._match
-
-    @match.setter
-    def match(self, stream):
-        matched = ""
-        current = self.first
-        while self.regex.match(current):
-            matched += current
-            try:
-                current = stream.consume_raw_stream()
-            except IndexError:
-                break
-        if matched:
-            self._match = True
+    def __init__(self):
+        super(WhitespaceToken, self).__init__(' ')
 
 
-# Todo: implement
-class CDOToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
+class NumberToken(CSSToken):
 
-    def __init__(self, first='', stream=deque()):
-        super(CDOToken, self).__init__(first, stream)
+    def __init__(self, string_repr, numeric_value, type_flag):
+        self.string = string_repr
+        self.value = numeric_value
+        self.type_ = type_flag
 
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
+    def __str__(self):
+        return self.string
 
 
-# Todo: implement
-class CDCToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
+class DimensionToken(NumberToken):
 
-    def __init__(self, first='', stream=deque()):
-        super(CDCToken, self).__init__(first, stream)
+    def __init__(self, string_repr, numeric_value, type_flag, unit):
+        super(DimensionToken, self).__init__(
+            string_repr, numeric_value, type_flag)
+        self.unit = unit
 
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
+    def __str__(self):
+        return "{} {}".format(super(DimensionToken, self).__str__(), self.unit)
 
 
-# Todo: implement
-class CommentToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
+class PercentageToken(NumberToken):
 
-    def __init__(self, first='', stream=deque()):
-        super(CommentToken, self).__init__(first, stream)
+    def __init__(self, string_repr, numeric_value):
+        super(PercentageToken, self).__init__(string_repr, numeric_value, None)
 
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class HexDigitToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(HexDigitToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class EscapeToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(EscapeToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class NewlineToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(NewlineToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
-
-
-# Todo: implement
-class EOFToken(CSSToken):
-    _regex = None
-    _value = ''
-    _match = None
-
-    def __init__(self, first='', stream=deque()):
-        super(EOFToken, self).__init__(first, stream)
-
-    @property
-    def value(self):
-        raise NotImplementedError
-
-    @value.setter
-    def value(self, regex_match):
-        raise NotImplementedError
-
-    @property
-    def match(self):
-        raise NotImplementedError
-
-    @match.setter
-    def match(self, stream):
-        raise NotImplementedError
+    def __str__(self):
+        return "{} %".format(super(PercentageToken, self).__str__())
 
 
 class CSSTokenizer(object):
-    instructions = {'(': LiteralToken, ')': LiteralToken, ',': LiteralToken,
-                    ':': LiteralToken, ';': LiteralToken, '[': LiteralToken,
-                    ']': LiteralToken, '{': LiteralToken, '}': LiteralToken,
-                    ' ': WhitespaceToken,   # Whitespace is generalized as ' '
-                    "'": string_chooser, '"': string_chooser,
-                    '0': numeric_token_chooser,   # Numbers are generalized
-                    'a': ident_like_token_chooser,  # 'Letters' are generalized
-                    '#': delim_token_chooser,
-                        # If the next input code point is a name code point or
-                        # the next two input code points are a valid escape,
-                        # then:
-                        #      1. Create a <hash-token>.
-                        #      2. If the next 3 input code points would start
-                        #         an identifier, set the <hash-token>’s type
-                        #         flag to "id".
-                        #      3. Consume a name, and set the <hash-token>’s
-                        #         value to the returned string.
-                        #      4. Return the <hash-token>.
-                    '$': delim_token_chooser,
-                        # If the next token is U+003D EQUALS SIGN (=) then its
-                        # a suffix match token
-                    '*': delim_token_chooser,
-                        # If the next token is U+003D EQUALS SIGN (=) then its
-                        # a substring match token
-                    '+': delim_token_chooser,
-                        # If the stream started with a number, reconsume the
-                        # current input code point, consume a numeric token and
-                        # return it.
-                    '-': delim_token_chooser,
-                        # If the stream started with a number, reconsume the
-                        # current input code point, consume a numeric token,
-                        # and return it.  If the next 2 input code points are
-                        # U+002D HYPHEN-MINUS U+003E GREATER-THAN SIGN (->),
-                        # consume them and return a <CDC-token>.
-                        # If the input stream starts with an identifier,
-                        # reconsume the current input code point, consume an
-                        # ident-like token, and return it.
-                    '.': delim_token_chooser,
-                        # If the input stream starts with a number, reconsume
-                        # the current input code point, consume a numeric
-                        # token, and return it.
-                    '<': delim_token_chooser,
-                        # If the next 3 input code points are U+0021
-                        # EXCLAMATION MARK U+002D HYPHEN-MINUS U+002D
-                        # HYPHEN-MINUS (!--), consume them and return a
-                        # <CDO-token>.
-                    '@': delim_token_chooser,
-                        # If the next 3 input code points would start an
-                        # identifier, consume a name, create an
-                        # <at-keyword-token> with its value set to the returned
-                        #  value, and return it.
-                    '\\': delim_token_chooser,
-                        # If the input stream starts with a valid escape,
-                        # reconsume the current input code point, consume an
-                        # ident-like token, and return it.  Otherwise, this is
-                        # a parse error. Return a <delim-token> with its value
-                        # set to the current input code point.
-                    '^': delim_token_chooser,
-                        # If the next input code point is U+003D EQUALS SIGN
-                        # (=), consume it and return a <prefix-match-token>.
-                    '|': delim_token_chooser,
-                        # If the next input code point is U+003D EQUALS SIGN
-                        # (=), consume it and return a <dash-match-token>.
-                        # Otherwise, if the next input code point is U+0073
-                        # VERTICAL LINE (|), consume it and return a
-                        # <column-token>.
-                    '~': delim_token_chooser
-                        # If the next input code point is U+003D EQUALS SIGN
-                        # (=), consume it and return an <include-match-token>.
-                    }
-    whitespace = re.compile('\s')
-    letters = re.compile('[a-zA-Z_]')
-    numbers = re.compile('\d')
-    newlines = re.compile('[\n\r\f]')
-    EOF = re.compile('\Z')
+    digit = re.compile(u'[\u0030-\u0039]')
+    hex_digit = re.compile(u'[\u0030-\u0039\u0041-\u0046\u0061-\u0066]')
+    uppercase_letter = re.compile(u'[\u0041-\u005A]')
+    lowercase_letter = re.compile(u'[\u0061-\u007A]')
+    letter = re.compile(u'[\u0041-\u0051\u0061-\u007A]')
+    non_ascii = re.compile(u'[^\u0000-\u007F]')
+    name_start = re.compile(u'''[\u0041-\u0051\u0061-\u007A\u005F]|
+                                [^\u0000-\u007F]
+                             ''', re.VERBOSE)
+    name = re.compile(u'''[\u0041-\u0051\u0061-\u007A\u005F]|
+                          [^\u0000-\u007F]|[\u0030-\u0039]|\u002D
+                       ''', re.VERBOSE)
+    non_printable = re.compile(u'[\u0000-\u0008\u000B\u000E-\u001F\u007F]')
+    newline = re.compile(u'\u000A')
+    whitespace = re.compile(u'[\u000A\u0009\u0020]')
+    surrogate = re.compile(u'[\uD800-\uDFFF]')
+    literal_tokens = re.compile(u'''\u0028|\u0029|\u002C|\u003A|\u003B|\u005B|
+                                    \u005D|\u007B|\u007D
+                                 ''', re.VERBOSE)
+    quotations = re.compile(u'[\u0022\u0027]')
+    hash_token = u'\u0023'   # A `#` character
+    forward_slash = u'\u002F'
+    dollar_sign = u'\u0024'
+    asterisk = u'\u002A'
+    plus = u'\u002B'
+    minus = u'\u002D'
+    full_stop = u'\u002E'
+    less_than = u'\u003C'
+    at_sign = u'\u0040'
+    backslash = u'\u005C'
+    circumflex = u'\u005E'
+    vertical = u'\u007C'
+    tilde = u'\u007E'
+    percent = u'\u0025'
+    EOF = None
 
     _stream = None
+    _tokens = None
     _current = None
+    _next = ''
 
-    def __init__(self, iterable=()):
-        if isinstance(iterable, basestring):
-            iterable = preprocessing(iterable)
-        else:
-            iterable = ''.join(map(preprocessing, iterable))
+    def __init__(self, input_string):
         self.tokens = deque()
-        self.stream = deque(iterable)
+        self.stream = input_string
+        self.current_code_point = ''
+        self.next_code_point = self.stream
 
     @property
     def stream(self):
@@ -957,59 +180,246 @@ class CSSTokenizer(object):
 
     @stream.setter
     def stream(self, value):
+        value = preprocessing(value)
         if self.stream is None:
             self._stream = deque(value)
         else:
             self._stream.extend(value)
 
+    @property
+    def tokens(self):
+        return self._tokens
+
+    @tokens.setter
+    def tokens(self, iterable):
+        if self._tokens is None:
+            self._tokens = deque()
+        self._tokens.extend(iterable)
+
+    @property
+    def current_code_point(self):
+        return self._current
+
+    @current_code_point.setter
+    def current_code_point(self, new_code_point):
+        self._current = new_code_point
+
+    @property
+    def next_code_point(self):
+        return self._next
+
+    @next_code_point.setter
+    def next_code_point(self, stream):
+        try:
+            self._next = stream[0]
+        except IndexError:
+            self._next = CSSTokenizer.EOF
+
     def tokenize_stream(self):
         while self.stream:
-            self._current = self.consume_raw_stream(1)
-            try:
-                if CSSTokenizer.whitespace.match(self._current):
-                    token_type = CSSTokenizer.instructions[' ']
-                elif CSSTokenizer.numbers.match(self._current):
-                    token_type = CSSTokenizer.instructions['0']
-                elif CSSTokenizer.letters.match(self._current):
-                    token_type = CSSTokenizer.instructions['a']
-                elif self._current in CSSTokenizer.instructions:
-                    token_type = CSSTokenizer.instructions[self._current]
-                elif CSSTokenizer.EOF.match(self._current):
-                    token_type = EOFToken()
-                else:
-                    token_type = delim_token_chooser
-            except KeyError as e:
-                logging.warn(
-                    "Unknown character `{}`.  Skipping".format(self._current))
+            if self.next_code_point is None:
+                break
+            self.current_code_point = self.consume_next_code_point()
+            if self.current_code_point == CSSTokenizer.forward_slash:
+                self.consume_comment()
+            elif CSSTokenizer.whitespace.match(self.current_code_point):
+                self.consume_whitespace_token()
+            elif (CSSTokenizer.digit.match(self.current_code_point) or
+                    self.current_code_point == CSSTokenizer.plus or
+                    self.current_code_point == CSSTokenizer.minus or
+                    self.current_code_point == CSSTokenizer.full_stop):
+                self.consume_numeric_token()
+            elif CSSTokenizer.name_start.match(self.current_code_point):
+                self.consume_ident_like_token()
+            elif CSSTokenizer.literal_tokens.match(self.current_code_point):
+                self.consume_literal_token()
+            elif CSSTokenizer.quotations.match(self.current_code_point):
+                self.consume_string_token()
+            elif self.current_code_point == CSSTokenizer.hash_token:
+                self.consume_hash_token()
+            elif self.current_code_point == CSSTokenizer.dollar_sign:
+                self.consume_suffix_match_token()
+            elif self.current_code_point == CSSTokenizer.asterisk:
+                self.consume_substring_match_token()
+            elif self.current_code_point == CSSTokenizer.less_than:
+                self.consume_CDO_token()
+            elif self.current_code_point == CSSTokenizer.backslash:
+                self.consume_escape_token()
+            elif self.current_code_point == CSSTokenizer.circumflex:
+                self.consume_prefix_match_token()
+            elif self.current_code_point == CSSTokenizer.vertical:
+                self.consume_dash_match_token()
+            elif self.current_code_point == CSSTokenizer.tilde:
+                self.consume_include_match_token()
             else:
-                self.tokens.append(token_type(self._current, self))
+                self.consume_delim_token()
 
-    def consume_token(self):
-        return self.tokens.popleft()
-
-    def consume_raw_stream(self, number=1):
-        return CSSTokenizer._consume(self.stream, number)
-
-    def token_peek(self, number=1):
-        return CSSTokenizer._lookahead(self.tokens, number)
-
-    def stream_peek(self, number=1):
-        return CSSTokenizer._lookahead(self.stream, number)
-
-    @staticmethod
-    def _lookahead(deq, number):
-        consumed = [deq.popleft() for _ in xrange(number)]
-        deq.extendleft(consumed[::-1])
-        return consumed
-
-    @staticmethod
-    def _consume(deq, number):
-        consumed = ''
-        while number > 0:
+    def lookahead(self, distance):
+        peek = []
+        for i in range(distance):
             try:
-                consumed += deq.popleft()
+                peek.append(self.stream[i])
             except IndexError:
-                return consumed
-            number -= 1
-        return consumed
+                peek.append(None)
+        return peek
 
+    def consume_next_code_point(self):
+        self.current_code_point = self.stream.popleft()
+        self.next_code_point = self.stream
+
+    def reconsume_current_code_point(self):
+        self.stream.appendleft(self.current_code_point)
+        self.current_code_point = None
+        self.next_code_point = self.stream
+
+    def _starts_identifier(self):
+        first, second, third = [self.current_code_point] + self.lookahead(2)
+        if first == CSSTokenizer.minus:
+            if CSSTokenizer.name_start.match(second):
+                return True
+            elif second == CSSTokenizer.minus:
+                return True
+            elif self._valid_escape(second, third):
+                return True
+        elif CSSTokenizer.name_start.match(first):
+            return True
+        elif self._valid_escape(first, second):
+            return True
+        return False
+
+    @staticmethod
+    def _valid_escape(first, second):
+        if first == CSSTokenizer.backslash:
+            if not CSSTokenizer.newline.match(second):
+                return True
+        return False
+
+    def consume_comment(self):
+        ending_asterisk = False
+        if self.next_code_point == CSSTokenizer.asterisk:
+            while self.next_code_point is not None:
+                next_point = self.consume_next_code_point()
+                if ending_asterisk:
+                    if next_point == CSSTokenizer.forward_slash:
+                        return
+                    else:
+                        ending_asterisk = False
+                if next_point == CSSTokenizer.asterisk:
+                    ending_asterisk = True
+        else:
+            self.consume_delim_token()
+
+    def consume_whitespace_token(self):
+        self.tokens.append(WhitespaceToken())
+        while (self.next_code_point is not None and
+                CSSTokenizer.whitespace.match(self.next_code_point)):
+            self.consume_next_code_point()
+
+    def _consume_digits(self):
+        digit_string = ''
+        while CSSTokenizer.digit.match(self.next_code_point):
+            self.current_code_point = self.consume_next_code_point()
+            digit_string += self.current_code_point
+        return digit_string
+
+    def _consume_number(self):
+        string_representation = ''
+        type_flag = 'integer'
+
+        # Optional sign of the number
+        if self.current_code_point in [CSSTokenizer.plus, CSSTokenizer.minus]:
+            string_representation += self.current_code_point
+
+        # Value before the decimal point
+        string_representation += self._consume_digits()
+
+        # Values after the decimal point
+        if CSSTokenizer.full_stop == self.next_code_point:
+            self.current_code_point = self.consume_next_code_point()
+            if CSSTokenizer.digit.match(self.next_code_point):
+                type_flag = 'number'
+                string_representation += self.current_code_point
+                string_representation += self._consume_digits()
+
+        # Scientific notation
+        if self.next_code_point in ['e', 'E']:
+            possible_scientific_notation = ''
+            self.current_code_point = self.consume_next_code_point()
+            possible_scientific_notation += self.current_code_point
+
+            # Optional sign of the number
+            if self.next_code_point in [CSSTokenizer.plus, CSSTokenizer.minus]:
+                self.current_code_point = self.consume_next_code_point()
+                possible_scientific_notation += self.current_code_point
+
+            # Values after the (optional) sign
+            if CSSTokenizer.digit.match(self.next_code_point):
+                type_flag = 'number'
+                possible_scientific_notation += self._consume_digits()
+                string_representation += possible_scientific_notation
+
+        numeric_value = float(string_representation)
+
+        return string_representation, numeric_value, type_flag
+
+    def consume_numeric_token(self):
+        string_repr, numeric_value, type_flag = self._consume_number()
+        if self._starts_identifier():
+            name = self.consume_name()
+            return DimensionToken(string_repr, numeric_value, type_flag, name)
+        elif self.next_code_point == CSSTokenizer.percent:
+            self.current_code_point = self.consume_next_code_point()
+            return PercentageToken(string_repr, numeric_value)
+        else:
+            return NumberToken(string_repr, numeric_value, type_flag)
+
+    def consume_name(self):
+        result = ''
+        while self.stream:
+            self.current_code_point = self.consume_next_code_point()
+            if CSSTokenizer.name.match(self.current_code_point):
+                result += self.current_code_point
+            elif self._valid_escape():
+                self.current_code_point = self.consume_next_code_point()
+                result += self.consume_escape_token()
+            else:
+                self.reconsume_current_code_point()
+                break
+        return result
+
+    def consume_ident_like_token(self):
+        pass
+
+    def consume_literal_token(self):
+        pass
+
+    def consume_string_token(self):
+        pass
+
+    def consume_hash_token(self):
+        pass
+
+    def consume_prefix_match_token(self):
+        pass
+
+    def consume_suffix_match_token(self):
+        pass
+
+    def consume_substring_match_token(self):
+        pass
+
+    def consume_CDO_token(self):
+        pass
+
+    def consume_escape_token(self):
+        self.current_code_point = self.consume_next_code_point()
+        return self.current_code_point
+
+    def consume_dash_match_token(self):
+        pass
+
+    def consume_include_match_token(self):
+        pass
+
+    def consume_delim_token(self):
+        pass
