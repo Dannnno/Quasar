@@ -52,7 +52,7 @@ from Quasar import parse_log_file
 logging.basicConfig(filename=parse_log_file, level=logging.INFO)
 
 replace_characters = OrderedDict()
-line_feed = u'\u000A'   # New line (\n)
+line_feed = u'\u000A'   # (\n)
 replacement_character = u'\uFFFD'   # Default replacement character (�)
 replace_characters[u'\u000D\u000A'] = line_feed   # Carriage Return + New Line
 replace_characters[u'\u000D\u000F'] = line_feed   # Carriage Return + Line Feed
@@ -128,6 +128,109 @@ class PercentageToken(NumberToken):
         return "{} %".format(super(PercentageToken, self).__str__())
 
 
+class IdentToken(CSSToken):
+
+    def __init__(self, name):
+        super(IdentToken, self).__init__(name)
+
+
+class FunctionToken(IdentToken):
+
+    def __init__(self, name):
+        super(FunctionToken, self).__init__(name)
+
+
+class URLToken(FunctionToken):
+
+    def __init__(self, value):
+        super(URLToken, self).__init__(value)
+
+
+class LiteralToken(CSSToken):
+
+    def __init__(self, value):
+        super(LiteralToken, self).__init__(value)
+
+
+class StringToken(CSSToken):
+
+    def __init__(self, value):
+        super(StringToken, self).__init__(value)
+
+
+class BadStringToken(StringToken):
+
+    def __init__(self):
+        super(BadStringToken, self).__init__('')
+
+
+class HashToken(CSSToken):
+
+    def __init__(self, value, type_):
+        super(HashToken, self).__init__(value)
+        self.type_flag = type_
+
+
+class DelimToken(CSSToken):
+
+    def __init__(self, value):
+        super(DelimToken, self).__init__(value)
+
+
+class SuffixMatchToken(CSSToken):
+
+    def __init__(self):
+        super(SuffixMatchToken, self).__init__('')
+
+
+class SubstringMatchToken(CSSToken):
+
+    def __init__(self):
+        super(SubstringMatchToken, self).__init__('')
+
+
+class PrefixMatchToken(CSSToken):
+
+    def __init__(self):
+        super(PrefixMatchToken, self).__init__('')
+
+
+class CDOToken(CSSToken):
+
+    def __init__(self):
+        super(CDOToken, self).__init__('')
+
+
+class CDCToken(CSSToken):
+
+    def __init__(self):
+        super(CDCToken, self).__init__('')
+
+
+class DashMatchToken(CSSToken):
+
+    def __init__(self):
+        super(DashMatchToken, self).__init__('')
+
+
+class IncludeMatchToken(CSSToken):
+
+    def __init__(self):
+        super(IncludeMatchToken, self).__init__('')
+
+
+class ColumnToken(CSSToken):
+
+    def __init__(self):
+        super(ColumnToken, self).__init__('')
+
+
+class AtKeywordToken(IdentToken):
+
+    def __init__(self, value):
+        super(AtKeywordToken, self).__init__(value)
+
+
 class CSSTokenizer(object):
     digit = re.compile(u'[\u0030-\u0039]')
     hex_digit = re.compile(u'[\u0030-\u0039\u0041-\u0046\u0061-\u0066]')
@@ -149,6 +252,7 @@ class CSSTokenizer(object):
                                     \u005D|\u007B|\u007D
                                  ''', re.VERBOSE)
     quotations = re.compile(u'[\u0022\u0027]')
+    url = re.compile(u'url', re.IGNORECASE)
     hash_token = u'\u0023'   # A `#` character
     forward_slash = u'\u002F'
     dollar_sign = u'\u0024'
@@ -157,18 +261,110 @@ class CSSTokenizer(object):
     minus = u'\u002D'
     full_stop = u'\u002E'
     less_than = u'\u003C'
+    greater_than = u'\u003E'
+    equals_sign = u'\u003D'
     at_sign = u'\u0040'
     backslash = u'\u005C'
     circumflex = u'\u005E'
     vertical = u'\u007C'
     tilde = u'\u007E'
     percent = u'\u0025'
+    lparen = u'\u0028'
+    rparen = u'\u0029'
+    double_quote = u'\u0022'
+    single_quote = u'\u0027'
+    exclamation_point = u'\u002D'
     EOF = None
 
     _stream = None
     _tokens = None
     _current = None
     _next = ''
+
+    @staticmethod
+    def _valid_escape(first, second):
+        if first == CSSTokenizer.backslash:
+            if not CSSTokenizer.newline.match(second):
+                return True
+        return False
+
+    @classmethod
+    def _string_to_number(cls, string):
+        sign, sign_removed = cls._get_sign(string)
+        integer, int_removed = cls._get_integer(sign_removed)
+        integer *= sign
+        if int_removed:
+            dec_removed = cls._get_decimal(int_removed)
+            if dec_removed:
+                fractional, frac_removed = cls._get_fractional(dec_removed)
+                decimal_places = pow(10, -1*len(fractional))
+                fractional = int(fractional) * sign
+                if frac_removed:
+                    exponent = pow(10, cls._get_exponent(frac_removed))
+                    return (integer + fractional*decimal_places) * exponent
+                else:
+                    return float(integer + (fractional * decimal_places))
+            else:
+                return float(integer)
+        else:
+            return integer
+
+    @classmethod
+    def _get_sign(cls, string):
+        if string[0] == cls.minus:
+            return -1, string[1:]
+        elif string[0] == cls.plus:
+            return 1, string[1:]
+        else:
+            return 1, string
+
+    @classmethod
+    def _get_integer(cls, string):
+        integer = ''
+        while string:
+            char = string[0]
+            if cls.digit.match(char):
+                integer += char
+                string = string[1:]
+            else:
+                break
+        return int(integer), string
+
+    @classmethod
+    def _get_decimal(cls, string):
+        if string:
+            if string[0] == cls.full_stop:
+                return string[1:]
+            else:
+                return string
+
+    @classmethod
+    def _get_fractional(cls, string):
+        fractional = '0'
+        leftover_string = ''
+        i = 0
+        for i in range(len(string)):
+            char = string[i]
+            if cls.digit.match(char):
+                fractional = fractional.lstrip('0')
+                fractional += char
+            else:
+                break
+        if i < len(string)-1:
+            leftover_string = string[i:]
+        return fractional, leftover_string
+
+    @classmethod
+    def _get_exponent(cls, string):
+        try:
+            if string[1] == cls.minus:
+                return -1 * int(string[2:])
+            elif string[1] == cls.plus:
+                return int(string[2:])
+            else:
+                return int(string[1:])
+        except IndexError:
+            return 0
 
     def __init__(self, input_string):
         self.tokens = deque()
@@ -285,13 +481,6 @@ class CSSTokenizer(object):
             return True
         return False
 
-    @staticmethod
-    def _valid_escape(first, second):
-        if first == CSSTokenizer.backslash:
-            if not CSSTokenizer.newline.match(second):
-                return True
-        return False
-
     def consume_comment(self):
         ending_asterisk = False
         if self.next_code_point == CSSTokenizer.asterisk:
@@ -360,14 +549,28 @@ class CSSTokenizer(object):
                 possible_scientific_notation += self._consume_digits()
                 string_representation += possible_scientific_notation
 
-        if type_flag == 'number':
-            numeric_value = float(string_representation)
-        else:
-            numeric_value = int(string_representation)
+        numeric_value = CSSTokenizer._string_to_number(string_representation)
 
         return string_representation, numeric_value, type_flag
 
     def consume_numeric_token(self):
+        if self.current_code_point == CSSTokenizer.minus:
+            if self.lookahead(2) == [CSSTokenizer.minus,
+                                     CSSTokenizer.greater_than]:
+                self.consume_CDC_token()
+                return
+            elif self._starts_identifier():
+                self.reconsume_current_code_point()
+                self.consume_ident_like_token()
+                return
+            elif CSSTokenizer.digit.match(self.next_code_point) is None:
+                self.consume_delim_token()
+                return
+        elif self.current_code_point == CSSTokenizer.full_stop:
+            if CSSTokenizer.digit.match(self.next_code_point) is None:
+                self.consume_delim_token()
+            else:
+                self.reconsume_current_code_point()
         string_repr, numeric_value, type_flag = self._consume_number()
         if self.next_code_point == CSSTokenizer.percent:
             self.consume_next_code_point()
@@ -398,38 +601,211 @@ class CSSTokenizer(object):
         return result
 
     def consume_ident_like_token(self):
-        pass
+        name = self._consume_name()
+        next_is_lparen = (self.next_code_point == CSSTokenizer.lparen)
+        if CSSTokenizer.url.match(name) and next_is_lparen:
+            self.consume_next_code_point()
+            first, second = self.lookahead(2)
+            if first is None:
+                self.consume_url_token()
+                return
+            elif second is None:
+                if CSSTokenizer.quotations.match(first):
+                    self.tokens.append(FunctionToken(name))
+                    return
+                else:
+                    self.consume_url_token()
+            while (CSSTokenizer.whitespace.match(first) and
+                   CSSTokenizer.whitespace.match(second)):
+                self.consume_next_code_point()
+
+            if ((CSSTokenizer.whitespace.match(first) and
+                    CSSTokenizer.quotations.match(second)) or
+                    (CSSTokenizer.quotations.match(first))):
+                self.tokens.append(FunctionToken(name))
+            else:
+                self.consume_url_token()
+        elif next_is_lparen:
+            self.consume_next_code_point()
+            self.tokens.append(FunctionToken(name))
+        self.tokens.append(IdentToken(name))
+
+    def consume_url_token(self):
+        result = ''
+        while CSSTokenizer.whitespace.match(self.next_code_point):
+            self.consume_next_code_point()
+        if self.next_code_point is None:
+            self.tokens.append(URLToken(result))
+        else:
+            while self.stream:
+                self.consume_next_code_point()
+                if (self.current_code_point == CSSTokenizer.rparen or
+                        self.next_code_point is None):
+                    break
+                elif (self.current_code_point == CSSTokenizer.lparen or
+                      CSSTokenizer.quotations.match(self.current_code_point) or
+                      CSSTokenizer.non_printable.match(
+                        self.current_code_point)):
+                    # This is a parse error
+                    self.consume_bad_url_token()
+                    return
+                elif self.current_code_point == CSSTokenizer.backslash:
+                    if self._valid_escape(self.current_code_point,
+                                          self.next_code_point):
+                        result += self.consume_escape_token()
+                    else:
+                        # This is a parse error
+                        self.consume_bad_url_token()
+                        return
+                else:
+                    result += self.current_code_point
+            self.tokens.append(URLToken(result))
+
+    def consume_bad_url_token(self):
+        while self.stream:
+            try:
+                self.consume_next_code_point()
+            except IndexError:
+                break
+            else:
+                if self.current_code_point == ')':
+                    break
+                elif self._valid_escape(self.current_code_point,
+                                        self.next_code_point):
+                    self.consume_escape_token()
+                else:
+                    pass
+        return
 
     def consume_literal_token(self):
-        pass
+        self.tokens.append(LiteralToken(self.current_code_point))
 
     def consume_string_token(self):
-        pass
+        result = ''
+        if self.current_code_point == CSSTokenizer.double_quote:
+            end_code_point = CSSTokenizer.double_quote
+        else:
+            end_code_point = CSSTokenizer.single_quote
+
+        try:
+            self.consume_next_code_point()
+        except IndexError:   # EOF
+            self.tokens.append(StringToken(result))
+        else:
+            while self.stream:
+                self.consume_next_code_point()
+                if self.current_code_point == end_code_point:
+                    break
+                elif CSSTokenizer.newline.match(self.current_code_point):
+                    # This is a parse error
+                    self.reconsume_current_code_point()
+                    self.tokens.append(BadStringToken())
+                    return
+                elif self.current_code_point == CSSTokenizer.backslash:
+                    if self.next_code_point is None:
+                        break
+                    elif CSSTokenizer.newline.match(self.next_code_point):
+                        self.consume_next_code_point()
+                    else:
+                        result += self.consume_escape_token()
+                else:
+                    result += self.current_code_point
+            self.tokens.append(StringToken(result))
 
     def consume_hash_token(self):
-        pass
+        if (CSSTokenizer.name.match(self.next_code_point) or
+                self._valid_escape(self.current_code_point,
+                                   self.next_code_point)):
+            type_flag = 'unrestricted'
+            if self._starts_identifier():
+                type_flag = 'id'
+            name = self._consume_name()
+            self.tokens.append(HashToken(name, type_flag))
+        else:
+            self.consume_delim_token()
 
     def consume_prefix_match_token(self):
-        pass
+        if self.next_code_point == CSSTokenizer.equals_sign:
+            self.consume_next_code_point()
+            self.tokens.append(PrefixMatchToken)
+        else:
+            self.consume_delim_token()
 
     def consume_suffix_match_token(self):
-        pass
+        if self.next_code_point == CSSTokenizer.equals_sign:
+            self.consume_next_code_point()
+            self.tokens.append(SuffixMatchToken())
+        else:
+            self.consume_delim_token()
 
     def consume_substring_match_token(self):
-        pass
+        if self.next_code_point == CSSTokenizer.equals_sign:
+            self.consume_next_code_point()
+            self.tokens.append(SubstringMatchToken())
 
     def consume_CDO_token(self):
-        pass
+        if self.lookahead(3) == [CSSTokenizer.exclamation_point,
+                                 CSSTokenizer.minus,
+                                 CSSTokenizer.minus]:
+            self.consume_next_code_point()
+            self.consume_next_code_point()
+            self.consume_next_code_point()
+            self.tokens.append(CDOToken())
+        else:
+            self.consume_delim_token()
+
+    def consume_CDC_token(self):
+        self.consume_next_code_point()
+        self.consume_next_code_point()
+        self.tokens.append(CDCToken())
 
     def consume_escape_token(self):
-        self.consume_next_code_point()
-        return self.current_code_point
+        try:
+            self.consume_next_code_point()
+        except IndexError:   # EOF
+            return replacement_character
+        else:
+            if CSSTokenizer.hex_digit.match(self.current_code_point):
+                hex_string = self.current_code_point
+                while (CSSTokenizer.hex_digit.match(self.current_code_point)and
+                       len(hex_string) <= 6):
+                    try:
+                        self.consume_next_code_point()
+                    except IndexError:   # empty deque
+                        break
+                    else:
+                        hex_string += self.current_code_point
+                hex_number = int(hex_string, 16)
+                if (hex_number == 0 or
+                        CSSTokenizer.surrogate.match(unichr(hex_number)) or
+                        hex_number > int("10FFFF", 16)):
+                    return replacement_character
+            else:
+                return self.current_code_point
 
     def consume_dash_match_token(self):
-        pass
+        if self.next_code_point == CSSTokenizer.equals_sign:
+            self.consume_next_code_point()
+            self.tokens.append(DashMatchToken())
+        elif self.next_code_point == CSSTokenizer.vertical:
+            self.consume_next_code_point()
+            self.tokens.append(ColumnToken())
+        else:
+            self.consume_delim_token()
 
     def consume_include_match_token(self):
-        pass
+        if self.next_code_point == CSSTokenizer.equals_sign:
+            self.consume_next_code_point()
+            self.tokens.append(IncludeMatchToken())
+        else:
+            self.consume_delim_token()
 
     def consume_delim_token(self):
-        pass
+        self.tokens.append(DelimToken(self.current_code_point))
+
+    def consume_commercial_at_token(self):
+        if self._starts_identifier():
+            name = self._consume_name()
+            self.tokens.append(AtKeywordToken(name))
+        else:
+            self.consume_delim_token()

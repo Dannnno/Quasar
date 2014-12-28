@@ -1,1 +1,1 @@
-__all__ = ['test_css_tokenizer']
+__all__ = ['test_css_tokenizer', 'test_tokenize_document']

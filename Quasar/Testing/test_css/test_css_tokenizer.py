@@ -2,9 +2,77 @@
 from collections import deque
 
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_almost_equal
 
 from Quasar.parser.tokens.css_tokens import CSSTokenizer, WhitespaceToken, \
     preprocessing, NumberToken, PercentageToken, DimensionToken
+
+
+class TestStringToNumber(object):
+
+    @classmethod
+    def setup_class(cls):
+        raise SkipTest
+
+    @staticmethod
+    def test_string_one():
+        assert CSSTokenizer._string_to_number('12345') == 12345
+
+    @staticmethod
+    def test_string_two():
+        assert CSSTokenizer._string_to_number('1234.5') == 1234.5
+
+    @staticmethod
+    def test_string_three():
+        assert CSSTokenizer._string_to_number('1234.5e9') == 1.2345e12
+
+    @staticmethod
+    def test_string_four():
+        assert CSSTokenizer._string_to_number('1234.5e+9') == 1.2345e12
+
+    @staticmethod
+    def test_string_five():
+        assert CSSTokenizer._string_to_number('1234.5e-9') == 1.2345e-6
+
+    @staticmethod
+    def test_string_six():
+        assert CSSTokenizer._string_to_number('+12345') == 12345
+
+    @staticmethod
+    def test_string_seven():
+        assert CSSTokenizer._string_to_number('+1234.5') == 1234.5
+
+    @staticmethod
+    def test_string_eight():
+        assert CSSTokenizer._string_to_number('+1234.5e9') == 1.2345e12
+
+    @staticmethod
+    def test_string_nine():
+        assert CSSTokenizer._string_to_number('+1234.5e+9') == 1.2345e12
+
+    @staticmethod
+    def test_string_ten():
+        assert CSSTokenizer._string_to_number('+1234.5e-9') == 1.2345e-6
+
+    @staticmethod
+    def test_string_eleven():
+        assert CSSTokenizer._string_to_number('-12345') == -12345
+
+    @staticmethod
+    def test_string_twelve():
+        assert CSSTokenizer._string_to_number('-1234.5') == -1234.5
+
+    @staticmethod
+    def test_string_thirteen():
+        assert CSSTokenizer._string_to_number('-1234.5e9') == -1.2345e12
+
+    @staticmethod
+    def test_string_fourteen():
+        assert CSSTokenizer._string_to_number('-1234.5e+9') == -1.2345e12
+
+    @staticmethod
+    def test_string_fifteen():
+        assert CSSTokenizer._string_to_number('-1234.5e-9') == -1.2345e-6
 
 
 class TestPreprocessing(object):
@@ -269,7 +337,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 12345000000000.0
+        assert token_stream.tokens[0].value == 1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '12345e9'
 
@@ -279,7 +347,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 12345000000000.0
+        assert token_stream.tokens[0].value == 1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '12345E9'
 
@@ -289,7 +357,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 12345000000000.0
+        assert token_stream.tokens[0].value == 1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '12345e+9'
 
@@ -299,7 +367,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 12345000000000.0
+        assert token_stream.tokens[0].value == 1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '12345E+9'
 
@@ -309,7 +377,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 0.000012345
+        assert_almost_equal(token_stream.tokens[0].value, 1.2345e-5)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '12345e-9'
 
@@ -319,7 +387,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 0.000012345
+        assert_almost_equal(token_stream.tokens[0].value, 1.2345e-5)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '12345E-9'
 
@@ -349,7 +417,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 12345000000000.0
+        assert token_stream.tokens[0].value == 1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+12345e9'
 
@@ -359,7 +427,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -12345000000000.0
+        assert token_stream.tokens[0].value == -1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-12345e9'
 
@@ -369,7 +437,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 12345000000000.0
+        assert token_stream.tokens[0].value == 1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+12345E9'
 
@@ -379,7 +447,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -12345000000000.0
+        assert token_stream.tokens[0].value == -1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-12345E9'
 
@@ -389,7 +457,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 12345000000000.0
+        assert token_stream.tokens[0].value == 1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+12345e+9'
 
@@ -399,7 +467,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -12345000000000.0
+        assert token_stream.tokens[0].value == -1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-12345e+9'
 
@@ -409,7 +477,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 12345000000000.0
+        assert token_stream.tokens[0].value == 1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+12345E+9'
 
@@ -419,7 +487,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -12345000000000.0
+        assert token_stream.tokens[0].value == -1.2345e13
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-12345E+9'
 
@@ -429,7 +497,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 0.000012345
+        assert_almost_equal(token_stream.tokens[0].value, 1.2345e-5)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+12345e-9'
 
@@ -439,7 +507,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -0.000012345
+        assert_almost_equal(token_stream.tokens[0].value,- 1.2345e-5)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-12345e-9'
 
@@ -449,7 +517,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 0.000012345
+        assert_almost_equal(token_stream.tokens[0].value, 1.2345e-5)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+12345E-9'
 
@@ -459,7 +527,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -0.000012345
+        assert_almost_equal(token_stream.tokens[0].value,- 1.2345e-5)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-12345E-9'
 
@@ -479,7 +547,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 123450000000.0
+        assert token_stream.tokens[0].value == 1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '123.45e9'
 
@@ -489,7 +557,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 123450000000.0
+        assert token_stream.tokens[0].value == 1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '123.45E9'
 
@@ -499,7 +567,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 123450000000.0
+        assert token_stream.tokens[0].value == 1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '123.45e+9'
 
@@ -509,7 +577,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 123450000000.0
+        assert token_stream.tokens[0].value == 1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '123.45E+9'
 
@@ -519,7 +587,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 0.00000012345
+        assert_almost_equal(token_stream.tokens[0].value, 1.2345e-7)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '123.45e-9'
 
@@ -529,7 +597,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 0.00000012345
+        assert_almost_equal(token_stream.tokens[0].value, 1.2345e-7)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '123.45E-9'
 
@@ -559,7 +627,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 123450000000.0
+        assert token_stream.tokens[0].value == 1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+123.45e9'
 
@@ -569,7 +637,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -123450000000.0
+        assert token_stream.tokens[0].value == -1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-123.45e9'
 
@@ -579,7 +647,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 123450000000.0
+        assert token_stream.tokens[0].value == 1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+123.45E9'
 
@@ -589,7 +657,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -123450000000.0
+        assert token_stream.tokens[0].value == -1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-123.45E9'
 
@@ -599,7 +667,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 123450000000.0
+        assert token_stream.tokens[0].value == 1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+123.45e+9'
 
@@ -609,7 +677,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -123450000000.0
+        assert token_stream.tokens[0].value == -1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-123.45e+9'
 
@@ -619,7 +687,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 123450000000.0
+        assert token_stream.tokens[0].value == 1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+123.45E+9'
 
@@ -629,7 +697,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -123450000000.0
+        assert token_stream.tokens[0].value == -1.2345e11
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-123.45E+9'
 
@@ -639,7 +707,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 0.00000012345
+        assert_almost_equal(token_stream.tokens[0].value, 1.2345e-7)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+123.45e-9'
 
@@ -649,7 +717,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == -0.00000012345
+        assert_almost_equal(token_stream.tokens[0].value, -1.2345e-7)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '-123.45e-9'
 
@@ -659,7 +727,7 @@ class TestConsumeNumber(object):
         token_stream.tokenize_stream()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], NumberToken)
-        assert token_stream.tokens[0].value == 0.00000012345
+        assert_almost_equal(token_stream.tokens[0].value, 1.2345e-7)
         assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].string == '+123.45E-9'
 
@@ -680,12 +748,6 @@ class TestConsumeName(object):
     def test_consume_name_code_point():
         token_stream = CSSTokenizer("asdfh427")
         assert token_stream._consume_name() == 'asdfh427'
-        assert not token_stream.stream
-
-    @staticmethod
-    def test_consume_name_escape_tokens():
-        token_stream = CSSTokenizer("\\a\\3\\9\\!")
-        assert token_stream._consume_name() == 'a39!'
         assert not token_stream.stream
 
     @staticmethod
@@ -736,11 +798,9 @@ class TestPercentageToken(object):
 class TestDimensionToken(object):
 
     @staticmethod
-    def test_consume_numeric_token_dimenstion1():
+    def test_consume_numeric_token_dimension1():
         token_stream = CSSTokenizer("12345meters")
         token_stream.consume_numeric_token()
-        print token_stream._starts_identifier()
-        print token_stream.stream
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], DimensionToken)
         assert token_stream.tokens[0].type_ is 'integer'
