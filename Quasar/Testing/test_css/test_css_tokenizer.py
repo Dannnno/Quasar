@@ -78,10 +78,6 @@ class TestStringToNumber(object):
 class TestPreprocessing(object):
 
     @staticmethod
-    def test_replace_carriage_return_and_line_feed():
-        assert preprocessing(u'\u000D\u000Fasdf') == u'\u000Aasdf'
-
-    @staticmethod
     def test_replace_carriage_return():
         assert preprocessing(u'\u000Dasdf') == u'\u000Aasdf'
 
@@ -789,7 +785,7 @@ class TestPercentageToken(object):
         token_stream.consume_numeric_token()
         assert not token_stream.stream
         assert isinstance(token_stream.tokens[0], PercentageToken)
-        assert token_stream.tokens[0].type_ is None
+        assert token_stream.tokens[0].type_ == 'number'
         assert token_stream.tokens[0].value == 12345
         assert token_stream.tokens[0].string == '12345'
         assert str(token_stream.tokens[0]) == '12345 %'

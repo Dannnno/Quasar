@@ -1,0 +1,10 @@
+Quasar.gui.rendering.javascript package
+=======================================
+
+Module contents
+---------------
+
+.. automodule:: Quasar.gui.rendering.javascript
+    :members:
+    :undoc-members:
+    :show-inheritance:

@@ -55,31 +55,62 @@ replace_characters = OrderedDict()
 line_feed = u'\u000A'   # (\n)
 replacement_character = u'\uFFFD'   # Default replacement character (�)
 replace_characters[u'\u000D\u000A'] = line_feed   # Carriage Return + New Line
-replace_characters[u'\u000D\u000F'] = line_feed   # Carriage Return + Line Feed
 replace_characters[u'\u000D'] = line_feed   # Carriage Return (CR)
 replace_characters[u'\u000C'] = line_feed   # Form Feed (FF)
 replace_characters[u'\u0000'] = replacement_character
 
 
-def preprocessing(unicode_string):
+def preprocessing(unicode_string_input):
+    """Preprocesses the CSS to handle invalid or undesirable code points.
+
+    Parameters
+    ----------
+    unicode_string_input : unicode
+        A string that holds a CSS document or CSS information, encoded using
+        UTF-8.
+
+    Returns
+    -------
+    unicode_string_output : unicode
+        The processed CSS
+
+    Notes
+    -----
+    - Invalid code points are defined by the current UTF-8 standard; any value
+      greater than U+10FFFF is invalid and is skipped by the algorithm.
+    - Undesirable code points and their replacements are:
+          U+000D U+000A Carriage Return + Line Feed -> U+000A Line Feed
+          U+000D Carriage Return -> U+000A Line Feed
+          U+000C Form Feed -> U+000A Line Feed
+          U+0000 Null -> U+FFFD Replacement Character (�)
+    """
+
     try:
-        unicode_string = unicode_string.decode('UTF-8')
+        unicode_string_output = unicode_string_input.decode('UTF-8')
     except UnicodeDecodeError:
         logging.warn("CSS contains invalid characters for UTF-8")
         acc_unicode_string = ''
-        for code_point in unicode_string:
+        for code_point in unicode_string_input:
             try:
                 acc_unicode_string += code_point.decode('UTF-8')
             except UnicodeDecodeError:
                 # Skip invalid characters
                 pass
-        unicode_string = acc_unicode_string
+        unicode_string_output = acc_unicode_string
     for replaced, replacer in replace_characters.iteritems():
-        unicode_string = unicode_string.replace(replaced, replacer)
-    return unicode_string
+        unicode_string_output = unicode_string_output.replace(replaced,
+                                                              replacer)
+    return unicode_string_output
 
 
 class CSSToken(object):
+    """The base class for all CSSToken objects.
+
+    Parameters
+    ----------
+    string : str
+        The string value of the token.
+    """
 
     def __init__(self, string):
         self.value = string
@@ -90,14 +121,36 @@ class CSSToken(object):
     def __repr__(self):
         return repr(str(self))
 
+    def __eq__(self, other):
+        values_equal = (self.value == other.value)
+        classes_equal = (type(self) == type(other))
+        subclass_of = (issubclass(self, other) or issubclass(other, self))
+        return values_equal and (classes_equal or subclass_of)
+
 
 class WhitespaceToken(CSSToken):
+    """A CSS Token representing an arbitrary amount of whitespace.
+
+    Whitespace of any length or type is arbitrarily reduced to a single space.
+    """
 
     def __init__(self):
         super(WhitespaceToken, self).__init__(' ')
 
 
 class NumberToken(CSSToken):
+    """A CSS Token representing some sort of number
+
+    Parameters
+    ----------
+    string_repr : str
+        The string representation of the number.
+    numeric_value : int, float
+        The numeric value of the number, either an integer or a floating point
+        number depending on the type_flag.
+    type_flag : str {'integer', 'number'}
+        The type of number this NumberToken instance holds.
+    """
 
     def __init__(self, string_repr, numeric_value, type_flag):
         self.string = string_repr
@@ -109,6 +162,23 @@ class NumberToken(CSSToken):
 
 
 class DimensionToken(NumberToken):
+    """A Number Token with a unit of measure.
+
+    For example, `10px` is a number token measured in terms of pixels.
+
+    Parameters
+    ----------
+    string_repr : str
+        The string representation of the number.
+    numeric_value : int, float
+        The numeric value of the number, either an integer or a floating point
+        number depending on the type_flag.
+    type_flag : str {'integer', 'number'}
+        The type of number this NumberToken instance holds.
+    unit : str
+        The unit of measure for this number token.  In the above example the
+        unit is `px` or pixels.
+    """
 
     def __init__(self, string_repr, numeric_value, type_flag, unit):
         super(DimensionToken, self).__init__(
@@ -120,51 +190,116 @@ class DimensionToken(NumberToken):
 
 
 class PercentageToken(NumberToken):
+    """A Number Token that represents some percentage value.
+
+    Parameters
+    ----------
+    string_repr : str
+        The string representation of the number.
+    numeric_value : int, float
+        The numeric value of the number, either an integer or a floating point
+        number depending on the type_flag.
+    """
 
     def __init__(self, string_repr, numeric_value):
-        super(PercentageToken, self).__init__(string_repr, numeric_value, None)
+        super(PercentageToken, self).__init__(
+            string_repr, numeric_value, 'number')
 
     def __str__(self):
         return "{} %".format(super(PercentageToken, self).__str__())
 
 
 class IdentToken(CSSToken):
+    """A CSS Token that represents an identifier.
+
+    Parameters
+    ----------
+    name : str
+        The name of the identifier.
+    """
 
     def __init__(self, name):
         super(IdentToken, self).__init__(name)
 
 
 class FunctionToken(IdentToken):
+    """An identifier that specifically identifies a function.
+
+    Parameters
+    ----------
+    name : str
+        The name of the function.
+    """
 
     def __init__(self, name):
         super(FunctionToken, self).__init__(name)
 
 
 class URLToken(FunctionToken):
+    """A token representing a URL function
+
+    Parameters
+    ----------
+    value : str
+        The value of the url function
+    """
 
     def __init__(self, value):
         super(URLToken, self).__init__(value)
 
 
 class LiteralToken(CSSToken):
+    """A literal token.
+
+    Used to represent the various string literals that are used to determine
+    scope (among other things) within a CSS document.
+
+    Parameters
+    ----------
+    value : str, { "{", "}", "[", "]", "(", ")", ";", ":", "," }
+        The value of the string literal.
+    """
 
     def __init__(self, value):
         super(LiteralToken, self).__init__(value)
 
 
 class StringToken(CSSToken):
+    """Token representing a string.
+
+    Parameters
+    ----------
+    value : str
+        The string held by the token.
+    """
 
     def __init__(self, value):
         super(StringToken, self).__init__(value)
 
 
 class BadStringToken(StringToken):
+    """Token representing an invalid string.
+
+    An invalid string is any string that contains an unescaped newline.  All
+    `BadStringToken`s have a value of '', the empty string.
+    """
 
     def __init__(self):
         super(BadStringToken, self).__init__('')
 
 
 class HashToken(CSSToken):
+    """A CSS Token representing an id selector.
+
+    For example, #foo {} selects the id `foo`.
+
+    Parameters
+    ----------
+    value : str
+        The name being selected
+    type_ : str, { 'unrestricted', 'id' }
+        The type of the HashToken (what is being selected).
+    """
 
     def __init__(self, value, type_):
         super(HashToken, self).__init__(value)
@@ -172,70 +307,189 @@ class HashToken(CSSToken):
 
 
 class DelimToken(CSSToken):
+    """Token used as a delimiter.
+
+    Parameters
+    ----------
+    value : str
+        The value of the delimiter.
+    """
 
     def __init__(self, value):
         super(DelimToken, self).__init__(value)
 
 
 class SuffixMatchToken(CSSToken):
+    """Indicates a suffix match.  I don't actually know what this is yet..."""
 
     def __init__(self):
         super(SuffixMatchToken, self).__init__('')
 
 
 class SubstringMatchToken(CSSToken):
+    """Indicates a substring match.  I don't actually know what this is yet...
+    """
 
     def __init__(self):
         super(SubstringMatchToken, self).__init__('')
 
 
 class PrefixMatchToken(CSSToken):
+    """Indicates a prefix match.  I don't actually know what this is yet..."""
 
     def __init__(self):
         super(PrefixMatchToken, self).__init__('')
 
 
 class CDOToken(CSSToken):
+    """Indicates a CDO Token.  Don't know what this is yet..."""
 
     def __init__(self):
         super(CDOToken, self).__init__('')
 
 
 class CDCToken(CSSToken):
+    """Indicates a CDC Token.  I don't actually know what this is yet..."""
 
     def __init__(self):
         super(CDCToken, self).__init__('')
 
 
 class DashMatchToken(CSSToken):
+    """Indicates a dash match.  I don't actually know what this is yet..."""
 
     def __init__(self):
         super(DashMatchToken, self).__init__('')
 
 
 class IncludeMatchToken(CSSToken):
+    """Indicates an include match.  I don't actually know what this is yet...
+    """
 
     def __init__(self):
         super(IncludeMatchToken, self).__init__('')
 
 
 class ColumnToken(CSSToken):
+    """Indicates a column.  I don't actually know what this is yet..."""
 
     def __init__(self):
         super(ColumnToken, self).__init__('')
 
 
 class AtKeywordToken(IdentToken):
+    """An at rule.
+
+    Parameters
+    ----------
+    value : str
+        The name of the at rule.
+    """
 
     def __init__(self, value):
         super(AtKeywordToken, self).__init__(value)
 
 
 class CSSTokenizer(object):
+    """Tokenizes a CSS string as per the W3C specifications[1]_.
+
+    All regular expressions, string comparisons, etc are based on their unicode
+    values as per the UTF-8 specification[2]_.
+
+
+    Parameters
+    ----------
+    input_string : str
+        The string containing the CSS to be tokenized.
+
+    Attributes
+    ----------
+    digit : _sre.SRE_Pattern
+        Regular expression that matches digits 0-9.
+    hex_digit : _sre.SRE_Pattern
+        Regular expression that matches hex digits: 0-9, a-f, A-F.
+    letter : _sre.SRE_Pattern
+        Regular expression that matches all letters: a-z, A-Z.
+    non_ascii : _sre.SRE_Pattern
+        Regular expression that matches all non-ASCII code points, that is the
+        code points with a value greater than U+007F.
+    name_start : _sre.SRE_Pattern
+        Regular expression that matches a "name-start" code point.  This
+        includes all letters, non-ASCII code points, and the low line code
+        point U+005F ( _ ).
+    name : _sre.SRE_Pattern
+        Regular expression that matches a "name" code point.  This includes
+        any name-start code point, any digit, and the hyphen-minus code point
+        U+002D (-).
+    non_printable : _sre.SRE_Pattern
+        Regular expression that matches so-called "non-printable" code points.
+        This includes any code point between U+0000 NULL and U+0008 BACKSPACE,
+        U+000B LINE TABULATION, any code point between U+000E SHIFT OUT and
+        U+001F INFORMATION SEPARATOR ONE, or U+007F DELETE.
+    newline : _sre.SRE_Pattern
+        Regular expression that mathces U+000A LINE FEED. Note that U+000D
+        CARRIAGE RETURN and U+000C FORM FEED are not included in this
+        definition, as they are converted to U+000A LINE FEED during
+        preprocessing.
+    whitespace : _sre.SRE_Pattern
+        Regular expression that matches any whitespace character.  Includes
+        newlines, U+0009 CHARACTER TABULATION, and U+0020 SPACE.
+    surrogate : _sre.SRE_Pattern
+        Regular expression that matches so-called "surrogate" code points.
+        This includes any code point between U+D800 and U+DFFF.
+    literal_tokens : _sre.SRE_Pattern
+        Regular expression that matches the "literal" characters.
+            \u0028
+            \u0029
+            \u002C
+            \u003A
+            \u003B
+            \u005B
+            \u005D
+            \u007B
+            \u007D
+    quotations : _sre.SRE_Pattern
+        Regular expression that matches either type of quote, U+0022 (") or
+        U+0027 (').
+    url : _sre.SRE_Pattern
+        Regular expression that matches the word 'url' in a non-case sensitive
+        manner.
+    hash_token : unicode
+        The # character U+0023.
+    forward_slash : unicode
+        The / character U+002F.
+    dollar_sign : unicode
+        The $ character U+0024.
+    asterisk : unicode
+        The * character U+002A.
+    plus : unicode
+        The + character U+002B.
+    minus : unicode
+        The - character U+002D.
+    full_stop : unicode
+        The . character U+002E.
+    less_than = u'\u003C'
+    greater_than = u'\u003E'
+    equals_sign = u'\u003D'
+    at_sign = u'\u0040'
+    backslash = u'\u005C'
+    circumflex = u'\u005E'
+    vertical = u'\u007C'
+    tilde = u'\u007E'
+    percent = u'\u0025'
+    lparen = u'\u0028'
+    rparen = u'\u0029'
+    double_quote = u'\u0022'
+    single_quote = u'\u0027'
+    exclamation_point = u'\u002D'
+    EOF = None
+
+    .. [1] http://dev.w3.org/csswg/css-syntax/#tokenizing-and-parsing
+    .. [2] https://tools.ietf.org/html/rfc3629
+    """
+
     digit = re.compile(u'[\u0030-\u0039]')
     hex_digit = re.compile(u'[\u0030-\u0039\u0041-\u0046\u0061-\u0066]')
-    uppercase_letter = re.compile(u'[\u0041-\u005A]')
-    lowercase_letter = re.compile(u'[\u0061-\u007A]')
     letter = re.compile(u'[\u0041-\u0051\u0061-\u007A]')
     non_ascii = re.compile(u'[^\u0000-\u007F]')
     name_start = re.compile(u'''[\u0041-\u0051\u0061-\u007A\u005F]|
@@ -253,7 +507,7 @@ class CSSTokenizer(object):
                                  ''', re.VERBOSE)
     quotations = re.compile(u'[\u0022\u0027]')
     url = re.compile(u'url', re.IGNORECASE)
-    hash_token = u'\u0023'   # A `#` character
+    hash_token = u'\u0023'
     forward_slash = u'\u002F'
     dollar_sign = u'\u0024'
     asterisk = u'\u002A'
