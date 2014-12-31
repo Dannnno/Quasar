@@ -79,10 +79,10 @@ def preprocessing(unicode_string_input):
     - Invalid code points are defined by the current UTF-8 standard; any value
       greater than U+10FFFF is invalid and is skipped by the algorithm.
     - Undesirable code points and their replacements are:
-          U+000D U+000A Carriage Return + Line Feed -> U+000A Line Feed
-          U+000D Carriage Return -> U+000A Line Feed
-          U+000C Form Feed -> U+000A Line Feed
-          U+0000 Null -> U+FFFD Replacement Character (�)
+         | U+000D U+000A Carriage Return + Line Feed -> U+000A Line Feed
+         | U+000D Carriage Return -> U+000A Line Feed
+         | U+000C Form Feed -> U+000A Line Feed
+         | U+0000 Null -> U+FFFD Replacement Character (�)
     """
 
     try:
@@ -396,6 +396,8 @@ class CSSTokenizer(object):
     All regular expressions, string comparisons, etc are based on their unicode
     values as per the UTF-8 specification[2]_.
 
+    .. [1] http://dev.w3.org/csswg/css-syntax/
+    .. [2] https://tools.ietf.org/html/rfc3629
 
     Parameters
     ----------
@@ -404,6 +406,10 @@ class CSSTokenizer(object):
 
     Attributes
     ----------
+    stream
+    tokens
+    current_code_point
+    next_code_point
     digit : _sre.SRE_Pattern
         Regular expression that matches digits 0-9.
     hex_digit : _sre.SRE_Pattern
@@ -455,37 +461,49 @@ class CSSTokenizer(object):
         Regular expression that matches the word 'url' in a non-case sensitive
         manner.
     hash_token : unicode
-        The # character U+0023.
+        The # code point U+0023.
     forward_slash : unicode
-        The / character U+002F.
+        The / code point U+002F.
     dollar_sign : unicode
-        The $ character U+0024.
+        The $ code point U+0024.
     asterisk : unicode
-        The * character U+002A.
+        The * code point U+002A.
     plus : unicode
-        The + character U+002B.
+        The + code point U+002B.
     minus : unicode
-        The - character U+002D.
+        The - code point U+002D.
     full_stop : unicode
-        The . character U+002E.
-    less_than = u'\u003C'
-    greater_than = u'\u003E'
-    equals_sign = u'\u003D'
-    at_sign = u'\u0040'
-    backslash = u'\u005C'
-    circumflex = u'\u005E'
-    vertical = u'\u007C'
-    tilde = u'\u007E'
-    percent = u'\u0025'
-    lparen = u'\u0028'
-    rparen = u'\u0029'
-    double_quote = u'\u0022'
-    single_quote = u'\u0027'
-    exclamation_point = u'\u002D'
-    EOF = None
-
-    .. [1] http://dev.w3.org/csswg/css-syntax/#tokenizing-and-parsing
-    .. [2] https://tools.ietf.org/html/rfc3629
+        The . code point U+002E.
+    less_than : unicode
+        The < code point U+003C.
+    greater_than : unicode
+        The > code point u+003E.
+    equals_sign : unicode
+        The = code point U+003D.
+    at_sign : unicode
+        The @ code point U+0040.
+    backslash : unicode
+        The \ code point U+005C.
+    circumflex : unicode
+        The ^ code point U+005E.
+    vertical : unicode
+        The | code point U+007C.
+    tilde : unicode
+        The ~ code point U+007E.
+    percent : unicode
+        The % code point U+0025.
+    lparen : unicode
+        The ( code point U+0028.
+    rparen : unicode
+        The ) code point U+0029.
+    double_quote : unicode
+        The " code point U+0022.
+    single_quote : unicode
+        The ' code point U+0027.
+    exclamation_point : unicode
+        The ! code point U+002D.
+    EOF : types.NoneType
+        Conceptual end of file.
     """
 
     digit = re.compile(u'[\u0030-\u0039]')
@@ -537,6 +555,25 @@ class CSSTokenizer(object):
 
     @staticmethod
     def _valid_escape(first, second):
+        """Determines whether two code points form a valid escape sequence.
+
+        Parameters
+        ----------
+        first : unicode
+            The first code point.
+        second : unicode
+            The second code point.
+
+        Returns
+        -------
+        bool
+
+        Notes
+        -----
+        The first code point must be a backslash and the second code point must
+        not be a newline for this  method to return True.
+
+        """
         if first == CSSTokenizer.backslash:
             if not CSSTokenizer.newline.match(second):
                 return True
@@ -544,6 +581,28 @@ class CSSTokenizer(object):
 
     @classmethod
     def _string_to_number(cls, string):
+        """Converts a string to a number.
+
+        Parameters
+        ----------
+        string : unicode
+            The string to be converted.
+
+        Returns
+        -------
+        int, float
+            The value of the number
+
+        Notes
+        -----
+        Divide the string into seven components, in order from left to right:
+            Sign, integer part, decimal, fractional part, exponent indicator,
+            exponent sign, exponent value.
+        These are explained in the docstrings of the helper methods.
+
+        Return a value s·(i + f·10-d)·10te.
+        """
+
         sign, sign_removed = cls._get_sign(string)
         integer, int_removed = cls._get_integer(sign_removed)
         integer *= sign
@@ -565,6 +624,25 @@ class CSSTokenizer(object):
 
     @classmethod
     def _get_sign(cls, string):
+        """Determines the sign of a string number.
+
+        Sign is determined by a single U+002B PLUS SIGN (+) or U+002D
+        HYPHEN-MINUS (-) or the empty string. Let s be the number -1 if the
+        sign is U+002D HYPHEN-MINUS (-); otherwise, let s be the number 1.
+
+        Parameters
+        ----------
+        string : unicode
+            The number whose sign needs to be determined.
+
+        Returns
+        -------
+        tuple
+            Returns a tuple, the first value is the sign (-1 or 1) and the
+            second value is the optionally truncated string that needs further
+            parsing.
+        """
+
         if string[0] == cls.minus:
             return -1, string[1:]
         elif string[0] == cls.plus:
@@ -574,6 +652,24 @@ class CSSTokenizer(object):
 
     @classmethod
     def _get_integer(cls, string):
+        """Determines the integer part of a number in string form.
+
+        The integer part consists of zero or more digits. If there is at least
+        one digit, let i be the number formed by interpreting the digits as a
+        base-10 integer; otherwise, let i be the number 0.
+
+        Parameters
+        ----------
+        string : unicode
+            The string whose integer part is to be determined
+
+        Returns
+        -------
+        tuple
+            A tuple of form (number, string) where the number is the integer
+            part and the string is the remaining string to be parsed.
+        """
+
         integer = ''
         while string:
             char = string[0]
@@ -586,6 +682,22 @@ class CSSTokenizer(object):
 
     @classmethod
     def _get_decimal(cls, string):
+        """Determines whether or not a decimal point (and thus fractional
+        portion) is present in the number.
+
+        Determined by a single U+002E FULL STOP (.), or the empty string.
+
+        Parameters
+        ----------
+        string : unicode
+            The string to be parsed
+
+        Returns
+        -------
+        unicode
+            The remaining string to be parsed.
+        """
+
         if string:
             if string[0] == cls.full_stop:
                 return string[1:]
@@ -594,6 +706,27 @@ class CSSTokenizer(object):
 
     @classmethod
     def _get_fractional(cls, string):
+        """Gets the fractional portion of a number.
+
+        A fractional part: zero or more digits. If there is at least one digit,
+        let f be the number formed by interpreting the digits as a base-10
+        integer and d be the number of digits; otherwise, let f and d be the
+        number 0.  The number of digits is calculated by whatever calls this
+        function.
+
+        Parameters
+        ----------
+        string : unicode
+            The string to be parsed.
+
+        Returns
+        -------
+        tuple
+            Returns a tuple of form (string, string).  The first string is the
+            fractional portion in string form, and the second is the remaining
+            string to be parsed.
+        """
+
         fractional = '0'
         leftover_string = ''
         i = 0
@@ -610,15 +743,46 @@ class CSSTokenizer(object):
 
     @classmethod
     def _get_exponent(cls, string):
-        try:
-            if string[1] == cls.minus:
-                return -1 * int(string[2:])
-            elif string[1] == cls.plus:
-                return int(string[2:])
-            else:
-                return int(string[1:])
-        except IndexError:
-            return 0
+        """Calculates the exponential portion of a string.
+
+        Consists of an exponent indicator, an exponent sign, and the exponent
+        value.
+
+        Parameters
+        ----------
+        string : unicode
+            The string to be parsed
+
+        Returns
+        -------
+        int
+            The value of the exponential portion.
+
+        Notes
+        -----
+        An exponent indicator: a single U+0045 LATIN CAPITAL LETTER E (E) or
+        U+0065 LATIN SMALL LETTER E (e), or the empty string.
+
+        An exponent sign: a single U+002B PLUS SIGN (+) or U+002D HYPHEN-MINUS
+        (-), or the empty string. Let t be the number -1 if the sign is U+002D
+        HYPHEN-MINUS (-); otherwise, let t be the number 1.
+
+        An exponent: zero or more digits. If there is at least one digit let e
+        be the number formed by interpreting the digits as a base-10 integer;
+        otherwise, let e be the number 0.
+        """
+
+        if string[0] in ['e', 'E']:
+            try:
+                if string[1] == cls.minus:
+                    return -1 * int(string[2:])
+                elif string[1] == cls.plus:
+                    return int(string[2:])
+                else:
+                    return int(string[1:])
+            except IndexError:
+                return 0
+        return 0
 
     def __init__(self, input_string):
         self.tokens = deque()
@@ -628,6 +792,8 @@ class CSSTokenizer(object):
 
     @property
     def stream(self):
+        """The byte stream of unicode code points that is to be tokenized"""
+
         return self._stream
 
     @stream.setter
@@ -636,6 +802,8 @@ class CSSTokenizer(object):
 
     @property
     def tokens(self):
+        """The stream of tokens that have been processed"""
+
         return self._tokens
 
     @tokens.setter
@@ -646,6 +814,8 @@ class CSSTokenizer(object):
 
     @property
     def current_code_point(self):
+        """The current code point that is being considered by the tokenizer"""
+
         return self._current
 
     @current_code_point.setter
@@ -654,6 +824,8 @@ class CSSTokenizer(object):
 
     @property
     def next_code_point(self):
+        """The next code point to be considered by the tokenizer"""
+
         return self._next
 
     @next_code_point.setter
@@ -664,6 +836,10 @@ class CSSTokenizer(object):
             self._next = CSSTokenizer.EOF
 
     def tokenize_stream(self):
+        """Tokenizes the code points within the byte stream.  Calls utility
+        methods to handle the various different tokenization algorithms
+        """
+
         while self.stream:
             if self.next_code_point is None:
                 break
@@ -703,6 +879,21 @@ class CSSTokenizer(object):
                 self.consume_delim_token()
 
     def lookahead(self, distance):
+        """Peeks along the byte stream to check what the next several code
+        points will be.
+
+        Parameters
+        ----------
+        distance : int
+            How many code points ahead to peek at.
+
+        Returns
+        -------
+        list
+            The next `distance` values to look at.  Uses `None` as a
+            placeholder if there are no more values to look at.
+        """
+
         peek = []
         for i in range(distance):
             try:
@@ -712,15 +903,41 @@ class CSSTokenizer(object):
         return peek
 
     def consume_next_code_point(self):
+        """Consumes the next code point in the stream and assigns the next
+        code point.
+        """
+
         self.current_code_point = self.stream.popleft()
         self.next_code_point = self.stream
 
     def reconsume_current_code_point(self):
+        """Pushes the current code point onto the front of the stream."""
+
         self.stream.appendleft(self.current_code_point)
         self.current_code_point = None
         self.next_code_point = self.stream
 
     def _starts_identifier(self):
+        """Determines whether or not the current code point and the next two
+        code points start an identifier.
+
+        Notes
+        -----
+        Look at the first code point:
+
+           | - U+002D HYPHEN-MINUS
+           |     If the second code point is a name-start code point or a
+           |     U+002D HYPHEN-MINUS, or the second and third code points are a
+           |     valid escape, return true. Otherwise, return false.
+           | - name-start code point
+           |     Return true.
+           | - U+005C REVERSE SOLIDUS (\)
+           |     If the first and second code points are a valid escape, return
+           |     true. Otherwise, return false.
+           | - anything else
+           |     Return false.
+        """
+
         first, second, third = [self.current_code_point] + self.lookahead(2)
         if first == CSSTokenizer.minus:
             if CSSTokenizer.name_start.match(second):
@@ -736,6 +953,17 @@ class CSSTokenizer(object):
         return False
 
     def consume_comment(self):
+        """Consumes comments within a CSS document but does not store the
+        information within them anywhere.
+
+        Notes
+        -----
+        If the next two input code point are U+002F SOLIDUS (/) followed by a
+        U+002A ASTERISK (*), consume them and all following code points up to
+        and including the first U+002A ASTERISK (*) followed by a U+002F
+        SOLIDUS (/), or up to an EOF code point. Return to the start of this
+        step.
+        """
         ending_asterisk = False
         if self.next_code_point == CSSTokenizer.asterisk:
             while self.next_code_point is not None:
@@ -751,13 +979,25 @@ class CSSTokenizer(object):
             self.consume_delim_token()
 
     def consume_whitespace_token(self):
+        """Consumes an arbitrary amount of whitespace of arbitrary type.  Adds
+        a WhitespaceToken to the end of the list of tokens.
+        """
+
         self.tokens.append(WhitespaceToken())
         while (self.next_code_point is not None and
                 CSSTokenizer.whitespace.match(self.next_code_point)):
             self.consume_next_code_point()
 
     def _consume_digits(self):
-        digit_string = ''
+        """Consumes numeric strings and returns them for further parsing.
+
+        Returns
+        -------
+        digit_string : unicode
+            String representing a series of numbers.
+        """
+
+        digit_string = u''
         if CSSTokenizer.digit.match(self.current_code_point):
             digit_string += self.current_code_point
         while CSSTokenizer.digit.match(self.next_code_point):
@@ -768,6 +1008,16 @@ class CSSTokenizer(object):
         return digit_string
 
     def _consume_number(self):
+        """Consumes a number.
+
+        Returns
+        -------
+        tuple
+            A 3-member tuple.  The first value is a string representation of
+            the number, the second is the numeric value, and the last is the
+            type (integer or not) of the number.
+        """
+
         string_representation = ''
         type_flag = 'integer'
 
@@ -808,6 +1058,11 @@ class CSSTokenizer(object):
         return string_representation, numeric_value, type_flag
 
     def consume_numeric_token(self):
+        """Consumes a numeric token: PercentageToken, DimensionToken, or
+        NumberToken.  Also handles some edge cases that occur when the leading
+        code point is a hyphen or a period.
+        """
+
         if self.current_code_point == CSSTokenizer.minus:
             if self.lookahead(2) == [CSSTokenizer.minus,
                                      CSSTokenizer.greater_than]:

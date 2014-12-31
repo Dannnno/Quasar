@@ -32,6 +32,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li><a href="index.html">Quasar 0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
@@ -46,12 +49,968 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="quasar-parser-tokens-css-tokens-module">
-<h2>Quasar.parser.tokens.css_tokens module<a class="headerlink" href="#quasar-parser-tokens-css-tokens-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-Quasar.parser.tokens.css_tokens">
+<span id="quasar-parser-tokens-css-tokens-module"></span><h2>Quasar.parser.tokens.css_tokens module<a class="headerlink" href="#module-Quasar.parser.tokens.css_tokens" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple" start="4">
+<li>Tokenization</li>
+</ol>
+<p>Implementations must act as if they used the following algorithms to tokenize
+CSS. To transform a stream of code points into a stream of tokens, repeatedly
+consume a token until an &lt;EOF-token&gt; is reached, collecting the returned tokens
+into a stream. Each call to the consume a token algorithm returns a single
+token, so it can also be used &#8220;on-demand&#8221; to tokenize a stream of code points
+during parsing, if so desired.</p>
+<p>The output of the tokenization step is a stream of zero or more of the
+following tokens:</p>
+<blockquote>
+<div>&lt;ident-token&gt;, &lt;function-token&gt;, &lt;at-keyword-token&gt;, &lt;hash-token&gt;,
+&lt;string-token&gt;, &lt;bad-string-token&gt;, &lt;url-token&gt;, &lt;bad-url-token&gt;,
+&lt;delim-token&gt;, &lt;number-token&gt;, &lt;percentage-token&gt;, &lt;dimension-token&gt;,
+&lt;include-match-token&gt;, &lt;dash-match-token&gt;, &lt;prefix-match-token&gt;,
+&lt;suffix-match-token&gt;, &lt;substring-match-token&gt;, &lt;column-token&gt;,
+&lt;whitespace-token&gt;, &lt;CDO-token&gt;, &lt;CDC-token&gt;, &lt;colon-token&gt;,
+&lt;semicolon-token&gt;, &lt;comma-token&gt;, &lt;[-token&gt;, &lt;]-token&gt;, &lt;(-token&gt;,
+&lt;)-token&gt;, &lt;{-token&gt;, and &lt;}-token&gt;.</div></blockquote>
+<p>Details on those tokens:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>&lt;ident-token&gt;, &lt;function-token&gt;, &lt;at-keyword-token&gt;, &lt;hash-token&gt;,</dt>
+<dd><dl class="first last docutils">
+<dt>&lt;string-token&gt;, &lt;url-token&gt;:</dt>
+<dd><ul class="first last simple">
+<li>Have a value composed of zero or more code points.</li>
+<li>&lt;hash-token&gt;s have a type flag set to either &#8220;id&#8221; or &#8220;unrestricted&#8221;.
+The type flag defaults to &#8220;unrestricted&#8221;</li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>&lt;delim-token&gt; has a value composed of a single code point.</p>
+<dl class="docutils">
+<dt>&lt;number-token&gt;, &lt;percentage-token&gt;, &lt;dimension-token&gt;:</dt>
+<dd><ul class="first last">
+<li><p class="first">Have a representation composed of one or more code points, and a
+numeric value.</p>
+</li>
+<li><p class="first">&lt;number-token&gt; and &lt;dimension-token&gt; additionally have a type flag
+set to either &#8220;integer&#8221; or &#8220;number&#8221;.</p>
+<blockquote>
+<div><ul class="simple">
+<li>The type flag defaults to &#8220;integer&#8221; if not otherwise set.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">&lt;dimension-token&gt; additionally have a unit composed of one or more
+code points.</p>
+</li>
+</ul>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.AtKeywordToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">AtKeywordToken</tt><big>(</big><em>value</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.AtKeywordToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.IdentToken" title="Quasar.parser.tokens.css_tokens.IdentToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.IdentToken</span></tt></a></p>
+<p>An at rule.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>value</strong> : str</p>
+<blockquote class="last">
+<div><p>The name of the at rule.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.BadStringToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">BadStringToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.BadStringToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.StringToken" title="Quasar.parser.tokens.css_tokens.StringToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.StringToken</span></tt></a></p>
+<p>Token representing an invalid string.</p>
+<p>An invalid string is any string that contains an unescaped newline.  All
+<a href="#id1"><span class="problematic" id="id2">`</span></a>BadStringToken`s have a value of &#8216;&#8217;, the empty string.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.CDCToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">CDCToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CDCToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Indicates a CDC Token.  I don&#8217;t actually know what this is yet...</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.CDOToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">CDOToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CDOToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Indicates a CDO Token.  Don&#8217;t know what this is yet...</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.CSSToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">CSSToken</tt><big>(</big><em>string</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>The base class for all CSSToken objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>string</strong> : str</p>
+<blockquote class="last">
+<div><p>The string value of the token.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">CSSTokenizer</tt><big>(</big><em>input_string</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Tokenizes a CSS string as per the W3C specifications[R1]_.</p>
+<p>All regular expressions, string comparisons, etc are based on their unicode
+values as per the UTF-8 specification[R2]_.</p>
+<table class="docutils citation" frame="void" id="r1" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label">[R1]</td><td><a class="reference external" href="http://dev.w3.org/csswg/css-syntax/">http://dev.w3.org/csswg/css-syntax/</a></td></tr>
+</tbody>
+</table>
+<table class="docutils citation" frame="void" id="r2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label">[R2]</td><td><a class="reference external" href="https://tools.ietf.org/html/rfc3629">https://tools.ietf.org/html/rfc3629</a></td></tr>
+</tbody>
+</table>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>input_string</strong> : str</p>
+<blockquote class="last">
+<div><p>The string containing the CSS to be tokenized.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.stream" title="Quasar.parser.tokens.css_tokens.CSSTokenizer.stream"><tt class="xref py py-obj docutils literal"><span class="pre">stream</span></tt></a></td>
+<td>The byte stream of unicode code points that is to be tokenized</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.tokens" title="Quasar.parser.tokens.css_tokens.CSSTokenizer.tokens"><tt class="xref py py-obj docutils literal"><span class="pre">tokens</span></tt></a></td>
+<td>The stream of tokens that have been processed</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.current_code_point" title="Quasar.parser.tokens.css_tokens.CSSTokenizer.current_code_point"><tt class="xref py py-obj docutils literal"><span class="pre">current_code_point</span></tt></a></td>
+<td>The current code point that is being considered by the tokenizer</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.next_code_point" title="Quasar.parser.tokens.css_tokens.CSSTokenizer.next_code_point"><tt class="xref py py-obj docutils literal"><span class="pre">next_code_point</span></tt></a></td>
+<td>The next code point to be considered by the tokenizer</td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="6%" />
+<col width="94%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>digit</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches digits 0-9.</td>
+</tr>
+<tr class="row-even"><td>hex_digit</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches hex digits: 0-9, a-f, A-F.</td>
+</tr>
+<tr class="row-odd"><td>letter</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches all letters: a-z, A-Z.</td>
+</tr>
+<tr class="row-even"><td>non_ascii</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches all non-ASCII code points, that is the code points with a value greater than U+007F.</td>
+</tr>
+<tr class="row-odd"><td>name_start</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches a &#8220;name-start&#8221; code point.  This includes all letters, non-ASCII code points, and the low line code point U+005F ( _ ).</td>
+</tr>
+<tr class="row-even"><td>name</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches a &#8220;name&#8221; code point.  This includes any name-start code point, any digit, and the hyphen-minus code point U+002D (-).</td>
+</tr>
+<tr class="row-odd"><td>non_printable</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches so-called &#8220;non-printable&#8221; code points. This includes any code point between U+0000 NULL and U+0008 BACKSPACE, U+000B LINE TABULATION, any code point between U+000E SHIFT OUT and U+001F INFORMATION SEPARATOR ONE, or U+007F DELETE.</td>
+</tr>
+<tr class="row-even"><td>newline</td>
+<td>(_sre.SRE_Pattern) Regular expression that mathces U+000A LINE FEED. Note that U+000D CARRIAGE RETURN and U+000C FORM FEED are not included in this definition, as they are converted to U+000A LINE FEED during preprocessing.</td>
+</tr>
+<tr class="row-odd"><td>whitespace</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches any whitespace character.  Includes newlines, U+0009 CHARACTER TABULATION, and U+0020 SPACE.</td>
+</tr>
+<tr class="row-even"><td>surrogate</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches so-called &#8220;surrogate&#8221; code points. This includes any code point between U+D800 and U+DFFF.</td>
+</tr>
+<tr class="row-odd"><td>literal_tokens</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches the &#8220;literal&#8221; characters. u0028 u0029 u002C u003A u003B u005B u005D u007B u007D</td>
+</tr>
+<tr class="row-even"><td>quotations</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches either type of quote, U+0022 (&#8221;) or U+0027 (&#8216;).</td>
+</tr>
+<tr class="row-odd"><td>url</td>
+<td>(_sre.SRE_Pattern) Regular expression that matches the word &#8216;url&#8217; in a non-case sensitive manner.</td>
+</tr>
+<tr class="row-even"><td>hash_token</td>
+<td>(unicode) The # code point U+0023.</td>
+</tr>
+<tr class="row-odd"><td>forward_slash</td>
+<td>(unicode) The / code point U+002F.</td>
+</tr>
+<tr class="row-even"><td>dollar_sign</td>
+<td>(unicode) The $ code point U+0024.</td>
+</tr>
+<tr class="row-odd"><td>asterisk</td>
+<td>(unicode) The * code point U+002A.</td>
+</tr>
+<tr class="row-even"><td>plus</td>
+<td>(unicode) The + code point U+002B.</td>
+</tr>
+<tr class="row-odd"><td>minus</td>
+<td>(unicode) The - code point U+002D.</td>
+</tr>
+<tr class="row-even"><td>full_stop</td>
+<td>(unicode) The . code point U+002E.</td>
+</tr>
+<tr class="row-odd"><td>less_than</td>
+<td>(unicode) The &lt; code point U+003C.</td>
+</tr>
+<tr class="row-even"><td>greater_than</td>
+<td>(unicode) The &gt; code point u+003E.</td>
+</tr>
+<tr class="row-odd"><td>equals_sign</td>
+<td>(unicode) The = code point U+003D.</td>
+</tr>
+<tr class="row-even"><td>at_sign</td>
+<td>(unicode) The &#64; code point U+0040.</td>
+</tr>
+<tr class="row-odd"><td>backslash</td>
+<td>(unicode) The code point U+005C.</td>
+</tr>
+<tr class="row-even"><td>circumflex</td>
+<td>(unicode) The ^ code point U+005E.</td>
+</tr>
+<tr class="row-odd"><td>vertical</td>
+<td>(unicode) The | code point U+007C.</td>
+</tr>
+<tr class="row-even"><td>tilde</td>
+<td>(unicode) The ~ code point U+007E.</td>
+</tr>
+<tr class="row-odd"><td>percent</td>
+<td>(unicode) The % code point U+0025.</td>
+</tr>
+<tr class="row-even"><td>lparen</td>
+<td>(unicode) The ( code point U+0028.</td>
+</tr>
+<tr class="row-odd"><td>rparen</td>
+<td>(unicode) The ) code point U+0029.</td>
+</tr>
+<tr class="row-even"><td>double_quote</td>
+<td>(unicode) The &#8221; code point U+0022.</td>
+</tr>
+<tr class="row-odd"><td>single_quote</td>
+<td>(unicode) The &#8216; code point U+0027.</td>
+</tr>
+<tr class="row-even"><td>exclamation_point</td>
+<td>(unicode) The ! code point U+002D.</td>
+</tr>
+<tr class="row-odd"><td>EOF</td>
+<td>(types.NoneType) Conceptual end of file.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.EOF">
+<tt class="descname">EOF</tt><em class="property"> = None</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.EOF" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.asterisk">
+<tt class="descname">asterisk</tt><em class="property"> = u'*'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.asterisk" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.at_sign">
+<tt class="descname">at_sign</tt><em class="property"> = u'&#64;'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.at_sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.backslash">
+<tt class="descname">backslash</tt><em class="property"> = u'\\'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.backslash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.circumflex">
+<tt class="descname">circumflex</tt><em class="property"> = u'^'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.circumflex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_CDC_token">
+<tt class="descname">consume_CDC_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_CDC_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_CDO_token">
+<tt class="descname">consume_CDO_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_CDO_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_bad_url_token">
+<tt class="descname">consume_bad_url_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_bad_url_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_comment">
+<tt class="descname">consume_comment</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_comment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Consumes comments within a CSS document but does not store the
+information within them anywhere.</p>
+<p class="rubric">Notes</p>
+<p>If the next two input code point are U+002F SOLIDUS (/) followed by a
+U+002A ASTERISK (*), consume them and all following code points up to
+and including the first U+002A ASTERISK (*) followed by a U+002F
+SOLIDUS (/), or up to an EOF code point. Return to the start of this
+step.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_commercial_at_token">
+<tt class="descname">consume_commercial_at_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_commercial_at_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_dash_match_token">
+<tt class="descname">consume_dash_match_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_dash_match_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_delim_token">
+<tt class="descname">consume_delim_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_delim_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_escape_token">
+<tt class="descname">consume_escape_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_escape_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_hash_token">
+<tt class="descname">consume_hash_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_hash_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_ident_like_token">
+<tt class="descname">consume_ident_like_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_ident_like_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_include_match_token">
+<tt class="descname">consume_include_match_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_include_match_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_literal_token">
+<tt class="descname">consume_literal_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_literal_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_next_code_point">
+<tt class="descname">consume_next_code_point</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_next_code_point" title="Permalink to this definition">¶</a></dt>
+<dd><p>Consumes the next code point in the stream and assigns the next
+code point.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_numeric_token">
+<tt class="descname">consume_numeric_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_numeric_token" title="Permalink to this definition">¶</a></dt>
+<dd><p>Consumes a numeric token: PercentageToken, DimensionToken, or
+NumberToken.  Also handles some edge cases that occur when the leading
+code point is a hyphen or a period.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_prefix_match_token">
+<tt class="descname">consume_prefix_match_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_prefix_match_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_string_token">
+<tt class="descname">consume_string_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_string_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_substring_match_token">
+<tt class="descname">consume_substring_match_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_substring_match_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_suffix_match_token">
+<tt class="descname">consume_suffix_match_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_suffix_match_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_url_token">
+<tt class="descname">consume_url_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_url_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_whitespace_token">
+<tt class="descname">consume_whitespace_token</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.consume_whitespace_token" title="Permalink to this definition">¶</a></dt>
+<dd><p>Consumes an arbitrary amount of whitespace of arbitrary type.  Adds
+a WhitespaceToken to the end of the list of tokens.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.current_code_point">
+<tt class="descname">current_code_point</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.current_code_point" title="Permalink to this definition">¶</a></dt>
+<dd><p>The current code point that is being considered by the tokenizer</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.digit">
+<tt class="descname">digit</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003B8C290&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.digit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.dollar_sign">
+<tt class="descname">dollar_sign</tt><em class="property"> = u'$'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.dollar_sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.double_quote">
+<tt class="descname">double_quote</tt><em class="property"> = u'&quot;'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.double_quote" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.equals_sign">
+<tt class="descname">equals_sign</tt><em class="property"> = u'='</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.equals_sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.exclamation_point">
+<tt class="descname">exclamation_point</tt><em class="property"> = u'-'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.exclamation_point" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.forward_slash">
+<tt class="descname">forward_slash</tt><em class="property"> = u'/'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.forward_slash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.full_stop">
+<tt class="descname">full_stop</tt><em class="property"> = u'.'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.full_stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.greater_than">
+<tt class="descname">greater_than</tt><em class="property"> = u'&gt;'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.greater_than" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.hash_token">
+<tt class="descname">hash_token</tt><em class="property"> = u'#'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.hash_token" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.hex_digit">
+<tt class="descname">hex_digit</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003BEA670&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.hex_digit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.less_than">
+<tt class="descname">less_than</tt><em class="property"> = u'&lt;'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.less_than" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.letter">
+<tt class="descname">letter</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003BF6870&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.letter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.literal_tokens">
+<tt class="descname">literal_tokens</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003CEA8F0&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.literal_tokens" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.lookahead">
+<tt class="descname">lookahead</tt><big>(</big><em>distance</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.lookahead" title="Permalink to this definition">¶</a></dt>
+<dd><p>Peeks along the byte stream to check what the next several code
+points will be.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>distance</strong> : int</p>
+<blockquote>
+<div><p>How many code points ahead to peek at.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">list</p>
+<blockquote class="last">
+<div><p>The next <cite>distance</cite> values to look at.  Uses <cite>None</cite> as a
+placeholder if there are no more values to look at.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.lparen">
+<tt class="descname">lparen</tt><em class="property"> = u'('</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.lparen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.minus">
+<tt class="descname">minus</tt><em class="property"> = u'-'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.minus" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.name">
+<tt class="descname">name</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003A42E68&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.name_start">
+<tt class="descname">name_start</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003CF3730&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.name_start" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.newline">
+<tt class="descname">newline</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003A28F10&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.newline" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.next_code_point">
+<tt class="descname">next_code_point</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.next_code_point" title="Permalink to this definition">¶</a></dt>
+<dd><p>The next code point to be considered by the tokenizer</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.non_ascii">
+<tt class="descname">non_ascii</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003AF7990&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.non_ascii" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.non_printable">
+<tt class="descname">non_printable</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003BEA738&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.non_printable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.percent">
+<tt class="descname">percent</tt><em class="property"> = u'%'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.percent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.plus">
+<tt class="descname">plus</tt><em class="property"> = u'+'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.plus" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.quotations">
+<tt class="descname">quotations</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003AF7850&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.quotations" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.reconsume_current_code_point">
+<tt class="descname">reconsume_current_code_point</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.reconsume_current_code_point" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pushes the current code point onto the front of the stream.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.rparen">
+<tt class="descname">rparen</tt><em class="property"> = u')'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.rparen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.single_quote">
+<tt class="descname">single_quote</tt><em class="property"> = u&quot;'&quot;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.single_quote" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.stream">
+<tt class="descname">stream</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>The byte stream of unicode code points that is to be tokenized</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.surrogate">
+<tt class="descname">surrogate</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003B8C328&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.surrogate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.tilde">
+<tt class="descname">tilde</tt><em class="property"> = u'~'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.tilde" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.tokenize_stream">
+<tt class="descname">tokenize_stream</tt><big>(</big><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.tokenize_stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tokenizes the code points within the byte stream.  Calls utility
+methods to handle the various different tokenization algorithms</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.tokens">
+<tt class="descname">tokens</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.tokens" title="Permalink to this definition">¶</a></dt>
+<dd><p>The stream of tokens that have been processed</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.url">
+<tt class="descname">url</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003BA8030&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.url" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.vertical">
+<tt class="descname">vertical</tt><em class="property"> = u'|'</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.vertical" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="Quasar.parser.tokens.css_tokens.CSSTokenizer.whitespace">
+<tt class="descname">whitespace</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0x0000000003B29960&gt;</em><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.CSSTokenizer.whitespace" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.ColumnToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">ColumnToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.ColumnToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Indicates a column.  I don&#8217;t actually know what this is yet...</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.DashMatchToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">DashMatchToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.DashMatchToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Indicates a dash match.  I don&#8217;t actually know what this is yet...</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.DelimToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">DelimToken</tt><big>(</big><em>value</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.DelimToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Token used as a delimiter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>value</strong> : str</p>
+<blockquote class="last">
+<div><p>The value of the delimiter.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.DimensionToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">DimensionToken</tt><big>(</big><em>string_repr</em>, <em>numeric_value</em>, <em>type_flag</em>, <em>unit</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.DimensionToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.NumberToken" title="Quasar.parser.tokens.css_tokens.NumberToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.NumberToken</span></tt></a></p>
+<p>A Number Token with a unit of measure.</p>
+<p>For example, <cite>10px</cite> is a number token measured in terms of pixels.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>string_repr</strong> : str</p>
+<blockquote>
+<div><p>The string representation of the number.</p>
+</div></blockquote>
+<p><strong>numeric_value</strong> : int, float</p>
+<blockquote>
+<div><p>The numeric value of the number, either an integer or a floating point
+number depending on the type_flag.</p>
+</div></blockquote>
+<p><strong>type_flag</strong> : str {&#8216;integer&#8217;, &#8216;number&#8217;}</p>
+<blockquote>
+<div><p>The type of number this NumberToken instance holds.</p>
+</div></blockquote>
+<p><strong>unit</strong> : str</p>
+<blockquote class="last">
+<div><p>The unit of measure for this number token.  In the above example the
+unit is <cite>px</cite> or pixels.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.FunctionToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">FunctionToken</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.FunctionToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.IdentToken" title="Quasar.parser.tokens.css_tokens.IdentToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.IdentToken</span></tt></a></p>
+<p>An identifier that specifically identifies a function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : str</p>
+<blockquote class="last">
+<div><p>The name of the function.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.HashToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">HashToken</tt><big>(</big><em>value</em>, <em>type_</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.HashToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>A CSS Token representing an id selector.</p>
+<p>For example, #foo {} selects the id <cite>foo</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>value</strong> : str</p>
+<blockquote>
+<div><p>The name being selected</p>
+</div></blockquote>
+<p><strong>type_</strong> : str, { &#8216;unrestricted&#8217;, &#8216;id&#8217; }</p>
+<blockquote class="last">
+<div><p>The type of the HashToken (what is being selected).</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.IdentToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">IdentToken</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.IdentToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>A CSS Token that represents an identifier.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>name</strong> : str</p>
+<blockquote class="last">
+<div><p>The name of the identifier.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.IncludeMatchToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">IncludeMatchToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.IncludeMatchToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Indicates an include match.  I don&#8217;t actually know what this is yet...</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.LiteralToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">LiteralToken</tt><big>(</big><em>value</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.LiteralToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>A literal token.</p>
+<p>Used to represent the various string literals that are used to determine
+scope (among other things) within a CSS document.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>value</strong> : str, { &#8220;{&#8221;, &#8220;}&#8221;, &#8220;[&#8221;, &#8220;]&#8221;, &#8220;(&#8221;, &#8221;)&#8221;, &#8221;;&#8221;, &#8221;:&#8221;, &#8221;,&#8221; }</p>
+<blockquote class="last">
+<div><p>The value of the string literal.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.NumberToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">NumberToken</tt><big>(</big><em>string_repr</em>, <em>numeric_value</em>, <em>type_flag</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.NumberToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>A CSS Token representing some sort of number</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>string_repr</strong> : str</p>
+<blockquote>
+<div><p>The string representation of the number.</p>
+</div></blockquote>
+<p><strong>numeric_value</strong> : int, float</p>
+<blockquote>
+<div><p>The numeric value of the number, either an integer or a floating point
+number depending on the type_flag.</p>
+</div></blockquote>
+<p><strong>type_flag</strong> : str {&#8216;integer&#8217;, &#8216;number&#8217;}</p>
+<blockquote class="last">
+<div><p>The type of number this NumberToken instance holds.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.PercentageToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">PercentageToken</tt><big>(</big><em>string_repr</em>, <em>numeric_value</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.PercentageToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.NumberToken" title="Quasar.parser.tokens.css_tokens.NumberToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.NumberToken</span></tt></a></p>
+<p>A Number Token that represents some percentage value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>string_repr</strong> : str</p>
+<blockquote>
+<div><p>The string representation of the number.</p>
+</div></blockquote>
+<p><strong>numeric_value</strong> : int, float</p>
+<blockquote class="last">
+<div><p>The numeric value of the number, either an integer or a floating point
+number depending on the type_flag.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.PrefixMatchToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">PrefixMatchToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.PrefixMatchToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Indicates a prefix match.  I don&#8217;t actually know what this is yet...</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.StringToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">StringToken</tt><big>(</big><em>value</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.StringToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Token representing a string.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>value</strong> : str</p>
+<blockquote class="last">
+<div><p>The string held by the token.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.SubstringMatchToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">SubstringMatchToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.SubstringMatchToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Indicates a substring match.  I don&#8217;t actually know what this is yet...</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.SuffixMatchToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">SuffixMatchToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.SuffixMatchToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>Indicates a suffix match.  I don&#8217;t actually know what this is yet...</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.URLToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">URLToken</tt><big>(</big><em>value</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.URLToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.FunctionToken" title="Quasar.parser.tokens.css_tokens.FunctionToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.FunctionToken</span></tt></a></p>
+<p>A token representing a URL function</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>value</strong> : str</p>
+<blockquote class="last">
+<div><p>The value of the url function</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Quasar.parser.tokens.css_tokens.WhitespaceToken">
+<em class="property">class </em><tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">WhitespaceToken</tt><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.WhitespaceToken" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#Quasar.parser.tokens.css_tokens.CSSToken" title="Quasar.parser.tokens.css_tokens.CSSToken"><tt class="xref py py-class docutils literal"><span class="pre">Quasar.parser.tokens.css_tokens.CSSToken</span></tt></a></p>
+<p>A CSS Token representing an arbitrary amount of whitespace.</p>
+<p>Whitespace of any length or type is arbitrarily reduced to a single space.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="Quasar.parser.tokens.css_tokens.preprocessing">
+<tt class="descclassname">Quasar.parser.tokens.css_tokens.</tt><tt class="descname">preprocessing</tt><big>(</big><em>unicode_string_input</em><big>)</big><a class="headerlink" href="#Quasar.parser.tokens.css_tokens.preprocessing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Preprocesses the CSS to handle invalid or undesirable code points.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>unicode_string_input</strong> : unicode</p>
+<blockquote>
+<div><p>A string that holds a CSS document or CSS information, encoded using
+UTF-8.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>unicode_string_output</strong> : unicode</p>
+<blockquote class="last">
+<div><p>The processed CSS</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<ul>
+<li><p class="first">Invalid code points are defined by the current UTF-8 standard; any value
+greater than U+10FFFF is invalid and is skipped by the algorithm.</p>
+</li>
+<li><dl class="first docutils">
+<dt>Undesirable code points and their replacements are:</dt>
+<dd><div class="first last line-block">
+<div class="line">U+000D U+000A Carriage Return + Line Feed -&gt; U+000A Line Feed</div>
+<div class="line">U+000D Carriage Return -&gt; U+000A Line Feed</div>
+<div class="line">U+000C Form Feed -&gt; U+000A Line Feed</div>
+<div class="line">U+0000 Null -&gt; U+FFFD Replacement Character (�)</div>
+</div>
+</dd>
+</dl>
+</li>
+</ul>
+</dd></dl>
+
 </div>
 <div class="section" id="module-contents">
 <h2>Module contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
-</div>
+<span class="target" id="module-Quasar.parser.tokens"></span></div>
 </div>
 
 
@@ -64,7 +1023,7 @@
   <ul>
 <li><a class="reference internal" href="#">Quasar.parser.tokens package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#quasar-parser-tokens-css-tokens-module">Quasar.parser.tokens.css_tokens module</a></li>
+<li><a class="reference internal" href="#module-Quasar.parser.tokens.css_tokens">Quasar.parser.tokens.css_tokens module</a></li>
 <li><a class="reference internal" href="#module-contents">Module contents</a></li>
 </ul>
 </li>
@@ -98,6 +1057,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li><a href="index.html">Quasar 0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
