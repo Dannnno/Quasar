@@ -1,5 +1,3 @@
-__author__ = 'Dan Obermiller'
-
 __all__ = ['parser']
 
 import os

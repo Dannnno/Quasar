@@ -51,6 +51,37 @@ from Quasar import parse_log_file
 
 logging.basicConfig(filename=parse_log_file, level=logging.INFO)
 
+
+# https://encoding.spec.whatwg.org/encodings.json
+valid_css_encodings = {'unicode-1-1-utf-8': 'utf-8', 'utf-8': 'utf-8',
+                       'utf8': 'utf-8', '866': 'ibm866', 'cp866': 'ibm866',
+                       'csibm866': 'ibm866', 'ibm866': 'ibm866',
+                       'csisolatin2': 'iso-8859-2', 'iso-8859-2': 'iso-8859-2',
+                       'iso-ir-101': 'iso-8859-2', 'iso8859-2': 'iso-8859-2',
+                       'iso88592': 'iso-8859-2', 'iso_8859-2': 'iso-8859-2',
+                       'iso_8859-2:1987': 'iso-8859-2', 'l2': 'iso-8859-2',
+                       'latin2': 'iso-8859-2', 'csisolatin3': 'iso-8859-3',
+                       'iso-8859-3': 'iso-8859-3', 'iso-ir-109': 'iso-8859-3',
+                       'iso8859-3': 'iso-8859-3', 'iso88593': 'iso-8859-3',
+                       'iso_8859-3:1988': 'iso-8859-3', 'l3': 'iso-8859-3',
+                       'latin3': 'iso-8859-3', 'csisolatin-4': 'iso-8859-4',
+                       'iso-8859-4': 'iso-8859-4',
+                       }
+
+
+def get_encoding(label):
+    # https://encoding.spec.whatwg.org/#concept-encoding-get
+    cleaned_label = label.strip()
+    try:
+        return valid_css_encodings[cleaned_label]
+    except KeyError:
+        raise TypeError("{} is an unsupported encoding".format(cleaned_label))
+
+
+def decode_input_byte_stream(byte_stream, encoding='utf-8'):
+    pass
+
+
 replace_characters = OrderedDict()
 line_feed = u'\u000A'   # (\n)
 replacement_character = u'\uFFFD'   # Default replacement character (�)
