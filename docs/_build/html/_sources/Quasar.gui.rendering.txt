@@ -1,0 +1,19 @@
+Quasar.gui.rendering package
+============================
+
+Subpackages
+-----------
+
+.. toctree::
+
+    Quasar.gui.rendering.css
+    Quasar.gui.rendering.html
+    Quasar.gui.rendering.javascript
+
+Module contents
+---------------
+
+.. automodule:: Quasar.gui.rendering
+    :members:
+    :undoc-members:
+    :show-inheritance:

@@ -1,7 +1,7 @@
-[![Docs built](https://readthedocs.org/projects/webbrowser/badge/?version=latest)](http://webbrowser.readthedocs.org/en/latest/)
-[![Build passed](https://travis-ci.org/Dannnno/WebBrowser.svg?branch=master)](https://travis-ci.org/Dannnno/WebBrowser)
-[![Coverage Status](https://coveralls.io/repos/Dannnno/WebBrowser/badge.png)](https://coveralls.io/r/Dannnno/WebBrowser)
-## Dannnno's WebBrowser
+[![Docs built](https://readthedocs.org/projects/quasar/badge/?version=latest)](http://quasar.readthedocs.org/en/latest/)
+[![Build passed](https://travis-ci.org/Dannnno/Quasar.svg?branch=master)](https://travis-ci.org/Dannnno/Quasar)
+[![Coverage Status](https://coveralls.io/repos/Dannnno/Quasar/badge.png)](https://coveralls.io/r/Dannnno/Quasar)
+## Dannnno's WebBrowser: Quasar
 
 This is a very long term project I'm going to play around with.  In general I'm interested in how to most effectively
 write parsers and I'd like to practice using a well solved problem (html, js, css).  This way I can compare my
@@ -50,6 +50,10 @@ get-go and then updating for edge cases as often as necessary.
 
 All tests can be run using nose from the commandline
 
-    \Path\To\Directory\WebBrowser\> nosetests
+    \Path\To\Directory\Quasar\> nosetests
     
     
+### Naming
+
+I forgot all about Python's builtin module `webbrowser` so I renamed my project from WebBrowser to Quasar.  No particular
+reason, I just think its a cool sounding name.

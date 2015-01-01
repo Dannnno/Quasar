@@ -1,0 +1,10 @@
+Quasar.gui.rendering.html package
+=================================
+
+Module contents
+---------------
+
+.. automodule:: Quasar.gui.rendering.html
+    :members:
+    :undoc-members:
+    :show-inheritance:

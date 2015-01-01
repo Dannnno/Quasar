@@ -1,0 +1,10 @@
+Quasar.http package
+===================
+
+Module contents
+---------------
+
+.. automodule:: Quasar.http
+    :members:
+    :undoc-members:
+    :show-inheritance:
