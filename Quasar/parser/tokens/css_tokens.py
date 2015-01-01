@@ -47,39 +47,67 @@ import logging
 import re
 
 from Quasar import parse_log_file
+from Quasar.parser import css_encodings
 
 
 logging.basicConfig(filename=parse_log_file, level=logging.INFO)
-
-
-# https://encoding.spec.whatwg.org/encodings.json
-valid_css_encodings = {'unicode-1-1-utf-8': 'utf-8', 'utf-8': 'utf-8',
-                       'utf8': 'utf-8', '866': 'ibm866', 'cp866': 'ibm866',
-                       'csibm866': 'ibm866', 'ibm866': 'ibm866',
-                       'csisolatin2': 'iso-8859-2', 'iso-8859-2': 'iso-8859-2',
-                       'iso-ir-101': 'iso-8859-2', 'iso8859-2': 'iso-8859-2',
-                       'iso88592': 'iso-8859-2', 'iso_8859-2': 'iso-8859-2',
-                       'iso_8859-2:1987': 'iso-8859-2', 'l2': 'iso-8859-2',
-                       'latin2': 'iso-8859-2', 'csisolatin3': 'iso-8859-3',
-                       'iso-8859-3': 'iso-8859-3', 'iso-ir-109': 'iso-8859-3',
-                       'iso8859-3': 'iso-8859-3', 'iso88593': 'iso-8859-3',
-                       'iso_8859-3:1988': 'iso-8859-3', 'l3': 'iso-8859-3',
-                       'latin3': 'iso-8859-3', 'csisolatin-4': 'iso-8859-4',
-                       'iso-8859-4': 'iso-8859-4',
-                       }
 
 
 def get_encoding(label):
     # https://encoding.spec.whatwg.org/#concept-encoding-get
     cleaned_label = label.strip()
     try:
-        return valid_css_encodings[cleaned_label]
+        return css_encodings[cleaned_label]
     except KeyError:
         raise TypeError("{} is an unsupported encoding".format(cleaned_label))
 
 
-def decode_input_byte_stream(byte_stream, encoding='utf-8'):
-    pass
+def check_byte_stream(byte_stream):
+    # http://dev.w3.org/csswg/css-syntax/#input-byte-stream
+    """Checking if something equivalent to "@charset "…";" is present.
+    """
+
+    if byte_stream[:10] == ['\x40', '\x63', '\x68', '\x61', '\x72',
+                            '\x73', '\x65', '\x74', '\x20', '\x22']:
+        if byte_stream[1022] == '\x22' and byte_stream[1023] == '\x3B':
+            middle_portion = byte_stream[10:1022]
+            if all(valid_range(hex_byte) for hex_byte in middle_portion):
+                label = ''.join(middle_portion).decode()
+                encoding = get_encoding(label)
+                if encoding in ['utf-16be', 'utf-16le']:
+                    encoding = 'utf-8'
+                return encoding
+    raise ValueError("No valid encoding specified by byte stream")
+
+
+def valid_range(hex_byte):
+    lower_bound = int('0', 16)
+    upper_bound = int('21', 16)
+    second_lower_bound = int('23', 16)
+    second_upper_bound = int('7F', 16)
+    in_lower_group = (lower_bound <= hex_byte <= upper_bound)
+    in_higher_group = (second_lower_bound <= hex_byte <= second_upper_bound)
+    return in_lower_group or in_higher_group
+
+
+def decode_input_byte_stream(byte_stream, encoding='utf-8', environment=None):
+    string = ''.join(byte_stream)
+    try:
+        validated_encoding = get_encoding(encoding)
+    except TypeError:
+        try:
+            calculated_encoding = check_byte_stream(byte_stream)
+        except (ValueError, TypeError):
+            if environment is not None:
+                encoded_string = string.decode(environment)
+            else:
+                encoded_string = string.decode('utf-8')
+        else:
+            encoded_string = string.decode(calculated_encoding)
+    else:
+        encoded_string = string.decode(validated_encoding)
+    unicode_string = encoded_string.encode('utf-8')
+    return unicode_string
 
 
 replace_characters = OrderedDict()

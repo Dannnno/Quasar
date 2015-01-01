@@ -1,5 +1,8 @@
+# -*- coding: UTF-8 -*-
 from Quasar.parser.ast import ASTNode
-from Quasar.parser.tokens.css_tokens import CSSTokenizer
+from Quasar.parser.tokens.css_tokens import CSSTokenizer, WhitespaceToken, \
+    AtKeywordToken, IdentToken, LiteralToken
+from Quasar.exceptions.parse_exceptions import CSSSyntaxError
 
 
 class CSSNode(ASTNode):
@@ -128,32 +131,114 @@ class ASTBuilderCSS(object):
         self.css_token_stream = token_stream
         self.css_abstract_syntax_tree = []
 
-    def parse_token_stream(self):
-        while self.css_token_stream:
-            pass
+    def parse_grammar(self, input_to_parse, grammar_rule):
+        result = self.parse_component_values_list(input_to_parse)
+        match = self.match_grammar_rule(grammar_rule, result)
+        if match:
+            return match
+        else:
+            return False
 
     def parse_stylesheet(self):
-        pass
+        """Intended to be the normal entry point"""
+        rules = self.consume_rules_list(self.css_token_stream,
+                                        top_level_flag=True)
+        return Stylesheet(rules)
 
-    def parse_rules_list(self):
-        pass
+    def parse_rules_list(self, stream):
+        """Intended for the content of at-rules such as '@media'.  Handles
+        CDC and CDO tokens differently from `parse_stylesheet`.
+        """
+        return self.consume_rules_list(stream, top_level_flag=False)
+
 
     def parse_rule(self):
-        pass
+        """Intended for use by the CSSStyleSheet#insertRule method, and similar
+        functions which might exist, which parse text into a single rule.
+        """
+        self._consume_whitespace_token()
+        if self.next_token is self.EOF:
+            raise CSSSyntaxError("Unexpected EOF while parsing a rule.")
+        elif isinstance(self.next_token, AtKeywordToken):
+            rule = self.consume_at_rule()
+        else:
+            rule = self.consume_qualified_rule()
+            if not rule:
+                raise CSSSyntaxError("Invalid qualified rule.")
+        self._consume_whitespace_token()
+        if self.next_token is self.EOF:
+            return rule
+        else:
+            raise CSSSyntaxError(
+                "Expected EOF, found {}".format(type(self.next_token)))
 
     def parse_declarations_list(self):
-        pass
+        """For the contents of a style attribute, which parses text into the
+        contents of a single style rule.
+        """
+        return self.consume_declarations_list()
 
     def parse_declaration(self):
-        pass
+        """Used in @supports conditions. http://www.w3.org/TR/css3-conditional/
+        """
+        self._consume_whitespace_token()
+        if not isinstance(self.next_token, IdentToken):
+            raise CSSSyntaxError(
+                "Expected Ident Token, found {}".format(type(self.next_token)))
+        declaration = self.consume_declaration()
+        if not declaration:
+            raise CSSSyntaxError("Expected a declaration, found nothing")
+        return declaration
 
     def parse_component_values_list(self):
-        pass
+        component_value_list = []
+        while self.next_token is not self.EOF:
+            component_value = self.consume_component_value()
+            if component_value is self.EOF:
+                break
+            else:
+                component_value_list.append(component_value)
+        return component_value_list
+
+    def parse_csv_component_values_list(self):
+        list_of_cvls = []
+        while self.next_token is not self.EOF:
+            inner_list = []
+            while (not isinstance(self.next_token, LiteralToken) and
+                   self.next_token.value == ','):
+                inner_list.append(self.consume_component_value())
+            list_of_cvls.append(inner_list)
+        return list_of_cvls
 
     def parse_component_value(self):
-        pass
+        """For things that need to consume a single value, like the parsing
+        rules for attr().
+        """
+        self._consume_whitespace_token()
+        if self.next_token is self.EOF:
+            raise CSSSyntaxError(
+                "Unexpected EOF while parsing component value")
+        component_value = self.consume_component_value()
+        self._consume_whitespace_token()
+        if self.next_token is self.EOF:
+            return component_value
+        else:
+            raise CSSSyntaxError(
+                "Expected EOF, found {}".format(type(self.next_token)))
+
+    def _consume_whitespace_token(self):
+        while isinstance(self.next_token, WhitespaceToken):
+            self.consume_next_token()
 
     def consume_rules_list(self):
+        """For the contents of presentational attributes, which parse text into
+        a single declaration's value, or for parsing a stand-alone selector
+        [1]_ or list of Media Queries [2]_, as in Selectors API [3]_ or the
+        media HTML attribute.
+        .. [1] http://www.w3.org/TR/2011/REC-css3-selectors-20110929/
+        .. [2] http://www.w3.org/TR/2012/REC-css3-mediaqueries-20120619/
+        .. [3] http://www.w3.org/TR/selectors-api/
+        """
         pass
 
     def consume_at_rule(self):
