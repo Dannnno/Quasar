@@ -1,14 +1,13 @@
-from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 
 from Quasar.parser.tokens.css_tokens import CSSTokenizer, HashToken, \
-    WhitespaceToken, LiteralToken, DimensionToken, IdentToken
+    WhitespaceToken, LiteralToken, DimensionToken, IdentToken, DelimToken
 
 
 class TestSmallCSS1(object):
 
     @classmethod
     def setup_class(cls):
-        raise SkipTest
         cls.css = """#gbar,#guser {
     font-size : 13px;
     padding-top : 1px !important;
@@ -16,8 +15,6 @@ class TestSmallCSS1(object):
         cls.stream = CSSTokenizer(cls.css)
         cls.stream.tokenize_stream()
         cls.tokens = cls.stream.tokens
-        for token in cls.tokens:
-            print token, type(token)
 
     def test_remaining_stream(self):
         assert not self.stream.stream
@@ -105,11 +102,12 @@ class TestSmallCSS1(object):
         assert self.tokens[18].value == ' '
 
     def test_twentieth_token(self):
-        raise SkipTest
+        assert isinstance(self.tokens[19], DelimToken)
+        assert self.tokens[19].value == '!'
 
     def test_twenty_first_token(self):
-        assert isinstance(self.tokens[20], WhitespaceToken)
-        assert self.tokens[20].value == ' '
+        assert isinstance(self.tokens[20], IdentToken)
+        assert self.tokens[20].value == 'important'
 
     def test_twenty_second_token(self):
         assert isinstance(self.tokens[21], LiteralToken)
@@ -122,3 +120,6 @@ class TestSmallCSS1(object):
     def test_twenty_fourth_token(self):
         assert isinstance(self.tokens[23], LiteralToken)
         assert self.tokens[23].value == '}'
+
+    def test_no_more_tokens(self):
+        assert_raises(IndexError, self.tokens.__getitem__, 24)

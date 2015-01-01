@@ -443,24 +443,16 @@ class CSSTokenizer(object):
     surrogate : _sre.SRE_Pattern
         Regular expression that matches so-called "surrogate" code points.
         This includes any code point between U+D800 and U+DFFF.
-    literal_tokens : _sre.SRE_Pattern
-        Regular expression that matches the "literal" characters.
-            \u0028
-            \u0029
-            \u002C
-            \u003A
-            \u003B
-            \u005B
-            \u005D
-            \u007B
-            \u007D
     quotations : _sre.SRE_Pattern
         Regular expression that matches either type of quote, U+0022 (") or
         U+0027 (').
     url : _sre.SRE_Pattern
         Regular expression that matches the word 'url' in a non-case sensitive
         manner.
-    hash_token : unicode
+    literal_tokens : list
+        A list of the literal tokens used by CSS. This includes the values
+        \u0028, \u0029, \u002C, \u003A, \u003B, \u005B, \u005D, \u007B, \u007D
+    octothorpe : unicode
         The # code point U+0023.
     forward_slash : unicode
         The / code point U+002F.
@@ -520,12 +512,11 @@ class CSSTokenizer(object):
     newline = re.compile(u'\u000A')
     whitespace = re.compile(u'[\u000A\u0009\u0020]')
     surrogate = re.compile(u'[\uD800-\uDFFF]')
-    literal_tokens = re.compile(u'''\u0028|\u0029|\u002C|\u003A|\u003B|\u005B|
-                                    \u005D|\u007B|\u007D
-                                 ''', re.VERBOSE)
     quotations = re.compile(u'[\u0022\u0027]')
     url = re.compile(u'url', re.IGNORECASE)
-    hash_token = u'\u0023'
+    literal_tokens = [u'\u0028', u'\u0029', u'\u002C', u'\u003A', u'\u003B',
+                      u'\u005B', u'\u005D', u'\u007B', u'\u007D']
+    octothorpe = u'\u0023'
     forward_slash = u'\u002F'
     dollar_sign = u'\u0024'
     asterisk = u'\u002A'
@@ -678,7 +669,10 @@ class CSSTokenizer(object):
                 string = string[1:]
             else:
                 break
-        return int(integer), string
+        try:
+            return int(integer), string
+        except ValueError:
+            return 0, string
 
     @classmethod
     def _get_decimal(cls, string):
@@ -848,18 +842,21 @@ class CSSTokenizer(object):
                 self.consume_comment()
             elif CSSTokenizer.whitespace.match(self.current_code_point):
                 self.consume_whitespace_token()
-            elif (CSSTokenizer.digit.match(self.current_code_point) or
-                    self.current_code_point == CSSTokenizer.plus or
-                    self.current_code_point == CSSTokenizer.minus or
-                    self.current_code_point == CSSTokenizer.full_stop):
+            elif CSSTokenizer.digit.match(self.current_code_point):
                 self.consume_numeric_token()
+            elif self.current_code_point == CSSTokenizer.plus:
+                self.handle_plus_sign()
+            elif self.current_code_point == CSSTokenizer.minus:
+                self.handle_minus_sign()
+            elif self.current_code_point == CSSTokenizer.full_stop:
+                self.handle_period()
             elif CSSTokenizer.name_start.match(self.current_code_point):
                 self.consume_ident_like_token()
-            elif CSSTokenizer.literal_tokens.match(self.current_code_point):
+            elif self.current_code_point in CSSTokenizer.literal_tokens:
                 self.consume_literal_token()
             elif CSSTokenizer.quotations.match(self.current_code_point):
                 self.consume_string_token()
-            elif self.current_code_point == CSSTokenizer.hash_token:
+            elif self.current_code_point == CSSTokenizer.octothorpe:
                 self.consume_hash_token()
             elif self.current_code_point == CSSTokenizer.dollar_sign:
                 self.consume_suffix_match_token()
@@ -873,6 +870,8 @@ class CSSTokenizer(object):
                 self.consume_prefix_match_token()
             elif self.current_code_point == CSSTokenizer.vertical:
                 self.consume_dash_match_token()
+            elif self.current_code_point == CSSTokenizer.at_sign:
+                self.consume_commercial_at_token()
             elif self.current_code_point == CSSTokenizer.tilde:
                 self.consume_include_match_token()
             else:
@@ -907,8 +906,19 @@ class CSSTokenizer(object):
         code point.
         """
 
-        self.current_code_point = self.stream.popleft()
-        self.next_code_point = self.stream
+        self._consume_n_code_points(1)
+        # self.current_code_point = self.stream.popleft()
+        # self.next_code_point = self.stream
+
+    def _consume_n_code_points(self, n):
+        """Consumes an arbitrary number of code points, if possible."""
+
+        for _ in range(n):
+            try:
+                self.current_code_point = self.stream.popleft()
+                self.next_code_point = self.stream
+            except IndexError:
+                break
 
     def reconsume_current_code_point(self):
         """Pushes the current code point onto the front of the stream."""
@@ -938,9 +948,13 @@ class CSSTokenizer(object):
            |     Return false.
         """
 
-        first, second, third = [self.current_code_point] + self.lookahead(2)
-        if first == CSSTokenizer.minus:
-            if CSSTokenizer.name_start.match(second):
+        first, second, third = self.lookahead(3)
+        if first is CSSTokenizer.EOF:
+            return False
+        elif first == CSSTokenizer.minus:
+            if second is CSSTokenizer.EOF:
+                return False
+            elif CSSTokenizer.name_start.match(second):
                 return True
             elif second == CSSTokenizer.minus:
                 return True
@@ -1000,11 +1014,12 @@ class CSSTokenizer(object):
         digit_string = u''
         if CSSTokenizer.digit.match(self.current_code_point):
             digit_string += self.current_code_point
-        while CSSTokenizer.digit.match(self.next_code_point):
-            self.consume_next_code_point()
-            digit_string += self.current_code_point
-            if self.next_code_point is None:
-                break
+        if self.next_code_point is not None:
+            while CSSTokenizer.digit.match(self.next_code_point):
+                self.consume_next_code_point()
+                digit_string += self.current_code_point
+                if self.next_code_point is None:
+                    break
         return digit_string
 
     def _consume_number(self):
@@ -1059,27 +1074,9 @@ class CSSTokenizer(object):
 
     def consume_numeric_token(self):
         """Consumes a numeric token: PercentageToken, DimensionToken, or
-        NumberToken.  Also handles some edge cases that occur when the leading
-        code point is a hyphen or a period.
+        NumberToken.
         """
 
-        if self.current_code_point == CSSTokenizer.minus:
-            if self.lookahead(2) == [CSSTokenizer.minus,
-                                     CSSTokenizer.greater_than]:
-                self.consume_CDC_token()
-                return
-            elif self._starts_identifier():
-                self.reconsume_current_code_point()
-                self.consume_ident_like_token()
-                return
-            elif CSSTokenizer.digit.match(self.next_code_point) is None:
-                self.consume_delim_token()
-                return
-        elif self.current_code_point == CSSTokenizer.full_stop:
-            if CSSTokenizer.digit.match(self.next_code_point) is None:
-                self.consume_delim_token()
-            else:
-                self.reconsume_current_code_point()
         string_repr, numeric_value, type_flag = self._consume_number()
         if self.next_code_point == CSSTokenizer.percent:
             self.consume_next_code_point()
@@ -1088,15 +1085,84 @@ class CSSTokenizer(object):
             if self.next_code_point is not None:
                 self.consume_next_code_point()
                 if self._starts_identifier():
-                    name = self.current_code_point + self._consume_name()
+                    name = self._consume_name()
                     self.tokens.append(DimensionToken(
                         string_repr, numeric_value, type_flag, name))
             else:
                 self.tokens.append(
                     NumberToken(string_repr, numeric_value, type_flag))
 
+    def handle_plus_sign(self):
+        """Handles the case where the current code point is U+002B PLUS SIGN.
+
+        If the input stream starts with a number, reconsume the current input
+        code point, consume a numeric token and return it.  Otherwise, return a
+        <delim-token> with its value set to the current input code point.
+        """
+
+        if self.next_code_point is not CSSTokenizer.EOF:
+            if CSSTokenizer.digit.match(self.next_code_point):
+                self.consume_numeric_token()
+                return
+        self.consume_delim_token()
+
+    def handle_minus_sign(self):
+        """Handles the case where the current code point is U+002D HYPHEN-MINUS
+        (-).
+
+        If the input stream starts with a number, reconsume the current input
+        code point, consume a numeric token, and return it.
+
+        Otherwise, if the next 2 input code points are U+002D HYPHEN-MINUS
+        U+003E GREATER-THAN SIGN (->), consume them and return a <CDC-token>.
+
+        Otherwise, if the input stream starts with an identifier, reconsume the
+        current input code point, consume an ident-like token, and return it.
+
+        Otherwise, return a <delim-token> with its value set to the current
+        input code point.
+        """
+
+        if self.next_code_point is not CSSTokenizer.EOF:
+            if CSSTokenizer.digit.match(self.next_code_point):
+                self.consume_numeric_token()
+                return
+            elif self.lookahead(2) == [CSSTokenizer.minus,
+                                       CSSTokenizer.greater_than]:
+                self.consume_CDC_token()
+                return
+            self.consume_next_code_point()
+            if self._starts_identifier():
+                self.reconsume_current_code_point()
+                self.stream.appendleft(u'\u002D')
+                self.consume_ident_like_token()
+                return
+        self.reconsume_current_code_point()
+        self.current_code_point = u'\u002D'
+        self.consume_delim_token()
+
+    def handle_period(self):
+        """Handles the case where the current code point is a U+002E FULL STOP.
+
+        If the input stream starts with a number, reconsume the current input
+        code point, consume a numeric token, and return it.
+
+        Otherwise, return a <delim-token> with its value set to the current
+        input code point.
+        """
+
+        if self.next_code_point is not CSSTokenizer.EOF:
+            if CSSTokenizer.digit.match(self.next_code_point):
+                self.stream.extendleft('.0')   # extendleft reverses the order
+                self.consume_numeric_token()
+                return
+        self.consume_delim_token()
+
     def _consume_name(self):
         result = ''
+        if self.current_code_point is not CSSTokenizer.EOF:
+            if CSSTokenizer.name.match(self.current_code_point):
+                result += self.current_code_point
         while self.stream:
             self.consume_next_code_point()
             if CSSTokenizer.name.match(self.current_code_point):
@@ -1222,10 +1288,10 @@ class CSSTokenizer(object):
             self.tokens.append(StringToken(result))
 
     def consume_hash_token(self):
-        if (CSSTokenizer.name.match(self.next_code_point) or
-                self._valid_escape(self.current_code_point,
-                                   self.next_code_point)):
-            type_flag = 'unrestricted'
+        type_flag = 'unrestricted'
+        peek = self.lookahead(2)
+        valid_escape = self._valid_escape(*peek)
+        if CSSTokenizer.name.match(self.next_code_point) or valid_escape:
             if self._starts_identifier():
                 type_flag = 'id'
             name = self._consume_name()
@@ -1236,7 +1302,7 @@ class CSSTokenizer(object):
     def consume_prefix_match_token(self):
         if self.next_code_point == CSSTokenizer.equals_sign:
             self.consume_next_code_point()
-            self.tokens.append(PrefixMatchToken)
+            self.tokens.append(PrefixMatchToken())
         else:
             self.consume_delim_token()
 
@@ -1285,12 +1351,17 @@ class CSSTokenizer(object):
                     else:
                         hex_string += self.current_code_point
                 hex_number = int(hex_string, 16)
-                if (hex_number == 0 or
-                        CSSTokenizer.surrogate.match(unichr(hex_number)) or
-                        hex_number > int("10FFFF", 16)):
+                surrogate = CSSTokenizer.surrogate.match(unichr(hex_number))
+                invalid_code_point = hex_number > int("10FFFF", 16)
+                if hex_number == 0 or surrogate or invalid_code_point:
                     return replacement_character
+                else:
+                    return str(hex_number)
             else:
-                return self.current_code_point
+                if self.current_code_point is not CSSTokenizer.EOF:
+                    return self.current_code_point
+                else:
+                    return replacement_character
 
     def consume_dash_match_token(self):
         if self.next_code_point == CSSTokenizer.equals_sign:
