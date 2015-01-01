@@ -1,0 +1,10 @@
+Quasar.parser.ast package
+=========================
+
+Module contents
+---------------
+
+.. automodule:: Quasar.parser.ast
+    :members:
+    :undoc-members:
+    :show-inheritance:

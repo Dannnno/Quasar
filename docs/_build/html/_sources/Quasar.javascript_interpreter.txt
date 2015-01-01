@@ -1,0 +1,10 @@
+Quasar.javascript_interpreter package
+=====================================
+
+Module contents
+---------------
+
+.. automodule:: Quasar.javascript_interpreter
+    :members:
+    :undoc-members:
+    :show-inheritance:
