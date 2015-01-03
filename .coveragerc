@@ -3,4 +3,5 @@ omit =
     */python?.?/*
     */site-packages/*
     *__init__*
-    */Testing/*
+    Quasar/Testing/*
+    Quasar/exceptions/*

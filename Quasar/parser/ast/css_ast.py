@@ -1,34 +1,42 @@
 # -*- coding: UTF-8 -*-
-from Quasar.parser.ast import ASTNode
+
+from collections import deque
+
 from Quasar.parser.tokens.css_tokens import CSSTokenizer, WhitespaceToken, \
-    AtKeywordToken, IdentToken, LiteralToken
+    AtKeywordToken, IdentToken, LiteralToken, CDCToken, CDOToken, DelimToken, \
+    FunctionToken
 from Quasar.exceptions.parse_exceptions import CSSSyntaxError
 
 
-class CSSNode(ASTNode):
-
-    def __init__(self, token, parent, children):
-        super(CSSNode, self).__init__(token, parent, children)
+class CSSNode(object): pass
 
 
 class AtRule(CSSNode):
 
-    pass
+    def __init__(self, name, prelude, component_values):
+        self.name = name
+        self.prelude = prelude
+        self.values = component_values
 
 
 class QualifiedRule(CSSNode):
 
-    pass
+    def __init__(self, prelude, component_values):
+        self.prelude = prelude
+        self.values = component_values
 
 
 class Declaration(CSSNode):
 
-    pass
+    def __init__(self, name, component_value):
+        self.name = name
+        self.value = component_value
 
 
 class ComponentValue(CSSNode):
 
-    pass
+    def __init__(self, value):
+        self.component = value
 
 
 class PreservedToken(CSSNode):
@@ -38,12 +46,16 @@ class PreservedToken(CSSNode):
 
 class Function(CSSNode):
 
-    pass
+    def __init__(self, name, component_values):
+        self.name = name
+        self.values = component_values
 
 
 class SimpleBlock(CSSNode):
 
-    pass
+    def __init__(self, associated_token, component_values):
+        self.token = associated_token
+        self.values = component_values
 
 
 class Stylesheet(object):
@@ -55,7 +67,6 @@ class ASTBuilderCSS(object):
     EOF = None
 
     _stream = None
-    _tree = None
     _current = None
     _next = None
 
@@ -66,14 +77,6 @@ class ASTBuilderCSS(object):
     @css_token_stream.setter
     def css_token_stream(self, new_stream):
         self._stream = new_stream
-
-    @property
-    def css_abstract_syntax_tree(self):
-        return self._tree
-
-    @css_abstract_syntax_tree.setter
-    def css_abstract_syntax_tree(self, new_tree):
-        self._tree = new_tree
 
     @property
     def current_token(self):
@@ -90,16 +93,19 @@ class ASTBuilderCSS(object):
     @next_token.setter
     def next_token(self, stream):
         try:
-            self._next = self.css_token_stream[0]
+            self._next = stream[0]
         except IndexError:
             self._next = self.EOF
 
     def consume_next_token(self):
-        if self.next_token is not self.EOF:
+        if self.css_token_stream:
             self.current_token = self.css_token_stream.popleft()
             self.next_token = self.css_token_stream
-        else:
-            raise StopIteration
+
+    def reconsume_current_token(self):
+        self.css_token_stream.appendleft(self.current_token)
+        self.next_token = self.css_token_stream
+        self.current_token = None
 
     def lookahead(self, n=1):
         peek = []
@@ -111,7 +117,7 @@ class ASTBuilderCSS(object):
         return peek
 
     @classmethod
-    def from_file_like_object(cls, file_):
+    def from_file(cls, file_):
         try:
             return cls.from_string(file_.read())
         except ValueError:
@@ -129,7 +135,6 @@ class ASTBuilderCSS(object):
 
     def __init__(self, token_stream):
         self.css_token_stream = token_stream
-        self.css_abstract_syntax_tree = []
 
     def parse_grammar(self, input_to_parse, grammar_rule):
         result = self.parse_component_values_list(input_to_parse)
@@ -141,16 +146,14 @@ class ASTBuilderCSS(object):
 
     def parse_stylesheet(self):
         """Intended to be the normal entry point"""
-        rules = self.consume_rules_list(self.css_token_stream,
-                                        top_level_flag=True)
+        rules = self.consume_rules_list(top_level_flag=True)
         return Stylesheet(rules)
 
-    def parse_rules_list(self, stream):
+    def parse_rules_list(self):
         """Intended for the content of at-rules such as '@media'.  Handles
         CDC and CDO tokens differently from `parse_stylesheet`.
         """
-        return self.consume_rules_list(stream, top_level_flag=False)
-
+        return self.consume_rules_list(top_level_flag=False)
 
     def parse_rule(self):
         """Intended for use by the CSSStyleSheet#insertRule method, and similar
@@ -230,7 +233,7 @@ class ASTBuilderCSS(object):
         while isinstance(self.next_token, WhitespaceToken):
             self.consume_next_token()
 
-    def consume_rules_list(self):
+    def consume_rules_list(self, top_level_flag=False):
         """For the contents of presentational attributes, which parse text into
         a single declaration's value, or for parsing a stand-alone selector
         [1]_ or list of Media Queries [2]_, as in Selectors API [3]_ or the
@@ -239,25 +242,174 @@ class ASTBuilderCSS(object):
         .. [2] http://www.w3.org/TR/2012/REC-css3-mediaqueries-20120619/
         .. [3] http://www.w3.org/TR/selectors-api/
         """
-        pass
+        list_of_rules = []
+        while self.next_token is not self.EOF:
+            self.consume_next_token()
+            if isinstance(self.current_token, WhitespaceToken):
+                continue
+            elif isinstance(self.current_token, (CDCToken, CDOToken)):
+                if top_level_flag:
+                    self.consume_component_value()
+                else:
+                    self.reconsume_current_token()
+                    qualified_rule = self.consume_qualified_rule()
+                    if qualified_rule:
+                        list_of_rules.append(qualified_rule)
+            elif isinstance(self.current_token, AtKeywordToken):
+                self.reconsume_current_token()
+                at_rule = self.consume_at_rule()
+                if at_rule:
+                    list_of_rules.append(at_rule)
+            else:
+                self.reconsume_current_token()
+                qualified_rule = self.consume_qualified_rule()
+                if qualified_rule:
+                    list_of_rules.append(qualified_rule)
+        return list_of_rules
 
     def consume_at_rule(self):
-        pass
+        self.consume_next_token()
+        name = self.current_token.value
+        prelude = []
+        block = None
+        while (self.next_token is not self.EOF or
+                (not isinstance(self.next_token, LiteralToken) and
+                 self.next_token.value == ';')):
+            self.consume_next_token()
+            if (isinstance(self.current_token, LiteralToken) and
+                    self.current_token.value == '{'):
+                block = self.consume_simple_block()
+                break
+            else:
+                self.reconsume_current_token()
+                prelude.append(self.consume_component_value())
+        return AtRule(name, prelude, block)
 
     def consume_qualified_rule(self):
-        pass
+        prelude = []
+        block = None
+        if self.current_token is self.EOF:
+            # Parse Error
+            return None
+        while self.next_token is not self.EOF:
+            self.consume_next_token()
+            if (isinstance(self.current_token, LiteralToken) and
+                    self.current_token.value == '{'):
+                block = self.consume_simple_block()
+                break
+            else:
+                self.reconsume_current_token()
+                prelude.append(self.consume_component_value())
+        return QualifiedRule(prelude, block)
 
     def consume_declarations_list(self):
-        pass
+        list_of_declarations = []
+        while self.next_token is not self.EOF:
+            self.consume_next_token()
+            if isinstance(self.current_token, WhitespaceToken):
+                continue
+            elif (isinstance(self.current_token, LiteralToken) and
+                  self.current_token.value == ';'):
+                continue
+            elif isinstance(self.current_token, AtKeywordToken):
+                self.reconsume_current_token()
+                list_of_declarations.append(self.consume_at_rule())
+            elif isinstance(self.current_token, IdentToken):
+                temp_list = [self.current_token]
+                while (self.next_token is not self.EOF or
+                        (not isinstance(self.next_token, LiteralToken) and
+                            self.next_token.value == ';')):
+                    component_value = self.consume_component_value()
+                    temp_list.append(component_value)
+                declaration = self.consume_declaration(temp_list)
+                if declaration:
+                    list_of_declarations.append(declaration)
+            else:
+                # Parse Error
+                while (self.next_token is not self.EOF or
+                        (not isinstance(self.next_token, LiteralToken) and
+                            self.next_token.value == ';')):
+                    self.consume_component_value()
+                break
+        return list_of_declarations
 
-    def consume_declaration(self):
-        pass
+    def consume_declaration(self, optional_list=None):
+        if optional_list is not None:
+            return self._consume_declaration(optional_list)
+        self.consume_next_token()
+        name = self.current_token.value
+        declaration_value = []
+        important = False
+        self._consume_whitespace_token()
+        if (isinstance(self.next_token, LiteralToken) and
+              self.next_token.value == ':'):
+            self.consume_next_token()
+        else:
+            # Parse Error
+            return None
+        while self.next_token is not self.EOF:
+            self.consume_next_token()
+            declaration_value.append(self.current_token)
+        first, second = None, None
+        for i, token in enumerate(reversed(declaration_value)):
+            if not isinstance(token, WhitespaceToken):
+                if not second:
+                    second = token, i
+                else:
+                    first = token, i
+                    break
+        if first:
+            exclamation = (isinstance(first[0], DelimToken) and
+                           first[0].value == '!')
+            ident_important = (isinstance(second[0], IdentToken) and
+                               second[0].value == 'important')
+            if exclamation and ident_important:
+                important = True
+                declaration_value.pop(first[1])
+                declaration_value.pop(second[1])
+        return Declaration(name, declaration_value, important)
+
+    @staticmethod
+    def _consume_declaration(list_to_consume):
+        deque_to_consume = deque(list_to_consume)
+        builder = ASTBuilderCSS(deque_to_consume)
+        return builder.consume_declaration()
 
     def consume_component_value(self):
-        pass
+        self.consume_next_token()
+        if isinstance(self.current_token, LiteralToken):
+            if self.current_token.value in ['{', '[', '(']:
+                return self.consume_simple_block()
+        elif isinstance(self.current_token, FunctionToken):
+            return self.consume_function()
+        return self.current_token
 
     def consume_simple_block(self):
-        pass
+        associated_token = self.current_token
+        block_value = []
+        if associated_token == '{':
+            ending_token = '}'
+        elif associated_token == '(':
+            ending_token = ')'
+        elif associated_token == '[':
+            ending_token = ']'
+        else:
+            raise CSSSyntaxError(
+                "Invalid start to a simple block {}".format(
+                    associated_token))
+        while (self.next_token is not self.EOF and
+                   (not isinstance(self.next_token, LiteralToken) and
+                    self.next_token.value == ending_token)):
+            self.reconsume_current_token()
+            block_value.append(self.consume_component_value())
+        return SimpleBlock(associated_token, block_value)
 
     def consume_function(self):
-        pass
+        name = self.current_token.value
+        function_value = []
+        while (self.next_token is not self.EOF and
+                   (not isinstance(self.next_token, LiteralToken) and
+                    self.next_token.value == ')')):
+            self.reconsume_current_token()
+            function_value.append(self.consume_component_value())
+        return Function(name, function_value)
